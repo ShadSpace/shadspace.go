@@ -20,10 +20,11 @@ func NewFileRegistry() *FileRegistry {
 	}
 }
 
-func (r *FileRegistry) RegisterFile(meta core.FileMetadata) {
+func (r *FileRegistry) RegisterFile(meta core.FileMetadata, peerIDs []peer.ID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.files[meta.Hash] = &meta
+	r.peers[meta.Hash] = peerIDs
 }
 
 func (r *FileRegistry) AddFileLocation(hash string, peerID peer.ID) {

@@ -11,7 +11,7 @@ storage:
 
 replication:
   strategy: "simple"
-  minReplicas: 2  # Changed from min_replicas
+  minReplicas: 1  # Changed from min_replicas
   healthCheckInterval: "60s"  # Changed from health_check_interval
 
 verification:

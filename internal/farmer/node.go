@@ -6,10 +6,17 @@ import (
 	"time"
 	"log"
 	"fmt"
+	"bufio"
+	"encoding/gob"
+	"io"
 
 	"github.com/lestonEth/shadspace/internal/p2p"
+	"github.com/lestonEth/shadspace/internal/core"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/libp2p/go-libp2p/core/network"
+
 )
 
 type FarmerNode struct {
@@ -64,19 +71,116 @@ func NewFarmerNode(parentCtx context.Context, cfg Config) (*FarmerNode, error) {
 
 	verifier := NewProofVerifier()
 
-	return &FarmerNode{
-		ctx:      ctx,
-		cancel:   cancel,
-		network:  network,
-		storage:  storage,
-		verifier: verifier,
-		cfg:      cfg,
+	node := &FarmerNode{
+		ctx:            ctx,
+		cancel:         cancel,
+		network:        network,
+		storage:        storage,
+		verifier:       verifier,
+		cfg:            cfg,
 		bootstrapPeers: bootstrapPeers,
-		lastReconnect: time.Now(),
-	}, nil
+		lastReconnect:  time.Now(),
+	}
+
+	// Register stream handlers
+	network.Host().SetStreamHandler(protocol.ID("/shadspace/storage/1.0.0"), node.handleStorageStream)
+	network.Host().SetStreamHandler(protocol.ID("/shadspace/retrieve/1.0.0"), node.handleRetrieveStream)
+
+	return node, nil
 }
 
+func (f *FarmerNode) handleStorageStream(stream network.Stream) {
+    defer func() {
+        if err := stream.Close(); err != nil {
+            log.Printf("Error closing stream: %v", err)
+        }
+    }()
 
+    // Set a deadline for the entire operation
+    if err := stream.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
+        log.Printf("Failed to set deadline: %v", err)
+        return
+    }
+
+    bufStream := bufio.NewReadWriter(
+        bufio.NewReader(stream),
+        bufio.NewWriter(stream),
+    )
+    dec := gob.NewDecoder(bufStream)
+    enc := gob.NewEncoder(bufStream)
+
+    // 1. Read metadata
+    var meta core.FileMetadata
+    if err := dec.Decode(&meta); err != nil {
+        log.Printf("Failed to decode metadata: %v", err)
+        return
+    }
+
+    // 2. Read shard data (with size limit)
+    maxShardSize := 256 << 20 // 256MB
+    shard, err := io.ReadAll(io.LimitReader(bufStream, int64(maxShardSize)))
+    if err != nil {
+        log.Printf("Failed to read shard: %v", err)
+        return
+    }
+
+    // 3. Store the shard
+    if err := f.storage.StoreChunk(meta.Hash, shard, &meta); err != nil {
+        log.Printf("Storage failed: %v", err)
+        return
+    }
+
+    // 4. Send acknowledgment
+    if err := enc.Encode("OK"); err != nil {
+        log.Printf("Failed to send ACK: %v", err)
+        return
+    }
+
+    // 5. Flush the ACK
+    if err := bufStream.Flush(); err != nil {
+        log.Printf("Failed to flush ACK: %v", err)
+        return
+    }
+
+    log.Printf("Stored shard %d/%d (%s, %d bytes)", 
+        meta.ShardIndex+1, meta.TotalShards, meta.Hash[:8], len(shard))
+}
+
+func (f *FarmerNode) handleRetrieveStream(stream network.Stream) {
+	defer stream.Close()
+
+	// Create buffered reader/writer
+	bufStream := bufio.NewReadWriter(
+		bufio.NewReader(stream),
+		bufio.NewWriter(stream),
+	)
+	dec := gob.NewDecoder(bufStream)
+
+	// 1. Read the requested hash
+	var hash string
+	if err := dec.Decode(&hash); err != nil {
+		log.Printf("Failed to decode retrieve request: %v", err)
+		return
+	}
+
+	// 2. Get the shard from storage
+	shard, err := f.storage.RetrieveChunk(hash)
+	if err != nil {
+		log.Printf("Failed to retrieve shard %s: %v", hash, err)
+		return
+	}
+
+	// 3. Send the shard data
+	if _, err := bufStream.Write(shard); err != nil {
+		log.Printf("Failed to send shard data: %v", err)
+		return
+	}
+
+	// Flush the data
+	if err := bufStream.Flush(); err != nil {
+		log.Printf("Failed to flush shard data: %v", err)
+	}
+}
 
 func (f *FarmerNode) Start() error {
 	if err := f.network.Start(); err != nil {

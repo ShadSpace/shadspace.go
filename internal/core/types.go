@@ -7,6 +7,9 @@ type FileMetadata struct {
 	Size        int64
 	Hash        string
 	CreatedAt   time.Time
+	IsShard     bool    // Whether this is an erasure coded shard
+    ShardIndex  int     // Index of this shard
+    TotalShards int     // Total number of shards
 	ProofType   string  // "groth16", "plonk", etc.
 	IsModel     bool    // Whether this is an AI model
 }
