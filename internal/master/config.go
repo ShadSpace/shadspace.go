@@ -17,6 +17,7 @@ type Config struct {
 
 type NetworkConfig struct {
 	ListenAddr     string
+	PrivateKey     string
 	BootstrapPeers []string
 	ProtocolTimeout time.Duration
 }

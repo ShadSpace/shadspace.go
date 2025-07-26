@@ -3,6 +3,7 @@ package master
 import (
 	"net/http"
 	"time"
+	"log"
 	
 	"github.com/gin-gonic/gin"
 )
@@ -18,13 +19,18 @@ func (c *Coordinator) ServeAPI(addr string) error {
 }
 
 func (c *Coordinator) handleStatus(ctx *gin.Context) {
+	peers := c.network.GetPeers()
+    peerCount := len(peers)
+
 	status := gin.H{
 		"peers":    c.network.GetPeerCount(),
 		"files":    c.registry.FileCount(),
 		"uptime":   time.Since(c.startTime).String(),
 		"replicas": c.replicator.GetStats(),
 	}
-	ctx.JSON(http.StatusOK, status)
+	log.Printf("Current peers: %d (%+v)", peerCount, peers) // Debug logging
+    ctx.JSON(http.StatusOK, status)
+
 }
 
 func (c *Coordinator) handleGetFile(ctx *gin.Context) {

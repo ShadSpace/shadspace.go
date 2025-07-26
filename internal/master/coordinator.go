@@ -29,6 +29,7 @@ func NewCoordinator(parentCtx context.Context, cfg Config) (*Coordinator, error)
 		cancel()
 		return nil, err
 	}
+	
 
 	replicator := NewReplicationManager(network, registry, cfg.Replication)
 

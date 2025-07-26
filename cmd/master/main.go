@@ -25,11 +25,16 @@ func main() {
 		log.Fatalf("Failed to create master node: %v", err)
 	}
 
+	log.Println("Starting Shadspace Master Node")
+    log.Printf("Configuration loaded: %+v", cfg)
+
 	if err := masterNode.Start(); err != nil {
 		log.Fatalf("Failed to start master node: %v", err)
 	}
 
 	// Start admin API
+	log.Printf("Starting API server on %s", cfg.API.ListenAddr)
+
 	go masterNode.ServeAPI(cfg.API.ListenAddr)
 
 	sigCh := make(chan os.Signal, 1)

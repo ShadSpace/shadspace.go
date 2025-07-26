@@ -1,0 +1,13 @@
+network:
+  listenAddr: "/ip4/0.0.0.0/tcp/53799"
+  bootstrapPeers:
+    - "/ip4/127.0.0.1/tcp/53798/p2p/QmPjTcnQEt1ayDvU3cFzpK91kGVBqBRrth4azijYjRCedU"
+  protocolTimeout: "30s"
+
+storage:
+  dataDir: "./data"
+  maxCapacityGB: 100
+  reservedSpaceGB: 10
+
+api:
+  listenAddr: ":5556"

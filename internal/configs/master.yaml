@@ -1,22 +1,23 @@
 network:
-  listen_address: "/ip4/0.0.0.0/tcp/53798"
-  bootstrap_peers: []
-  protocol_timeout: "30s"
+  listenAddr: "/ip4/0.0.0.0/tcp/53798"
+  privateKey: "shadspace_q3Jv8vQn5w2Z1p6sQ4t9e8b7c6d5f4g3h2i1j0k9l8m7n6o5"
+  bootstrapPeers: []  # Changed from bootstrap_peers
+  protocolTimeout: "30s"  # Changed from protocol_timeout
 
 storage:
-  replication_factor: 3
-  sharding_enabled: true
-  proof_ttl: "720h" # 30 days
+  replicationFactor: 3  # Changed from replication_factor
+  shardingEnabled: true  # Changed from sharding_enabled
+  proofTTL: "720h"  # Changed from proof_ttl
 
 replication:
-  strategy: "simple" # simple|priority|geo
-  min_replicas: 2
-  health_check_interval: "60s"
+  strategy: "simple"
+  minReplicas: 2  # Changed from min_replicas
+  healthCheckInterval: "60s"  # Changed from health_check_interval
 
 verification:
-  batch_size: 100
+  batchSize: 100  # Changed from batch_size
   timeout: "10s"
-  max_verifiers: 10
+  maxVerifiers: 10  # Changed from max_verifiers
 
 api:
-  listen_addr: ":8080"
+  listenAddr: ":5555"
