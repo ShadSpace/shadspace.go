@@ -1,0 +1,36 @@
+shadspace/
+├── cmd/
+│   ├── master/
+│   │   └── main.go          # Master node entry point
+│   ├── farmer/
+│   │   └── main.go          # Farmer node entry point
+│   └── client/
+│       └── main.go          # Client CLI entry point
+├── internal/
+│   ├── core/
+│   │   ├── node.go          # Base node implementation
+│   │   ├── storage.go       # Storage layer
+│   │   └── verification.go  # Proof verification
+│   ├── master/
+│   │   ├── coordinator.go   # Coordination logic
+│   │   ├── registry.go      # File/Proof registry
+│   │   └── replication.go   # Replication strategies
+│   ├── farmer/
+│   │   ├── storage.go       # Storage management
+│   │   ├── proof.go         # Proof handling
+│   │   └── challenge.go     # Storage proofs
+│   └── p2p/
+│       ├── network.go       # Network layer
+│       ├── protocol.go      # Custom protocols
+│       └── discovery.go     # Peer discovery
+├── pkg/
+│   ├── proto/               # Protobuf definitions
+│   ├── zk/                  # ZK proof utilities
+│   └── ai/                  # AI model utilities
+├── configs/
+│   ├── master.yaml          # Master node config
+│   ├── farmer.yaml          # Farmer node config
+│   └── client.yaml          # Client config
+├── scripts/                 # Deployment scripts
+├── tests/                   # Integration tests
+└── go.mod                   # Go module file

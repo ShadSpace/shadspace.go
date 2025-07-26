@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  master:
+    build: .
+    container_name: shadspace-master
+    ports:
+      - "8080:8080"  # Admin API
+      - "53798:53798"  # P2P port
+    volumes:
+      - ./configs:/app/configs
+      - ./data:/app/data
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=info
+    networks:
+      - shadspace-net
+
+networks:
+  shadspace-net:
+    driver: bridge
