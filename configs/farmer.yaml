@@ -6,7 +6,7 @@ network:
 
 storage:
   dataDir: "./data"
-  maxCapacityGB: 100
+  maxCapacityGB: 20
   reservedSpaceGB: 10
 
 api:
