@@ -2,6 +2,7 @@ package master
 
 import (
 	"context"
+	"log"
 	"sync"
 	
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -10,7 +11,7 @@ import (
 )
 
 type ReplicationManager struct {
-	network    *NetworkManager
+	network    *p2p.NetworkManager
 	registry   *FileRegistry
 	strategies map[string]ReplicationStrategy
 	activeJobs map[string]context.CancelFunc
@@ -22,7 +23,7 @@ type ReplicationStrategy interface {
 	Replicate(file *core.FileMetadata, peers []peer.AddrInfo) error
 }
 
-func NewReplicationManager(network *NetworkManager, registry *FileRegistry, cfg ReplicationConfig) *ReplicationManager {
+func NewReplicationManager(network *p2p.NetworkManager, registry *FileRegistry, cfg ReplicationConfig) *ReplicationManager {
 	return &ReplicationManager{
 		network:    network,
 		registry:   registry,
@@ -32,16 +33,15 @@ func NewReplicationManager(network *NetworkManager, registry *FileRegistry, cfg 
 	}
 }
 
-/*
-ReplicateFile replicates a file to the given peers using the configured replication strategy.
-It first checks if the file exists in the registry, and if not, returns an error.
-It then gets the replication strategy from the strategies map, and if not found, returns an error.
-It then creates a context with a timeout, and locks the active jobs map to prevent concurrent replication of the same file.
-It then starts a goroutine to replicate the file to the given peers, and if the replication fails, it logs an error.
-It then returns nil.
-*/
+func (r *ReplicationManager) UpdatePeerList(peers []peer.AddrInfo) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	// TODO: Implement peer list update logic here
+}
+
+// Fix the ReplicateFile method
 func (r *ReplicationManager) ReplicateFile(hash string) error {
-	meta, peers, exists := r.registry.GetFile(hash)
+	meta, peerIDs, exists := r.registry.GetFile(hash)
 	if !exists {
 		return core.ErrFileNotFound
 	}
@@ -51,7 +51,18 @@ func (r *ReplicationManager) ReplicateFile(hash string) error {
 		return core.ErrInvalidStrategy
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), r.cfg.HealthCheckInterval)
+	// Convert peer.IDs to peer.AddrInfo
+	var peers []peer.AddrInfo
+	for _, pid := range peerIDs {
+		if addrs := r.network.Host().Peerstore().Addrs(pid); len(addrs) > 0 {
+			peers = append(peers, peer.AddrInfo{
+				ID:    pid,
+				Addrs: addrs,
+			})
+		}
+	}
+
+	_, cancel := context.WithTimeout(context.Background(), r.cfg.HealthCheckInterval)
 	r.mu.Lock()
 	r.activeJobs[hash] = cancel
 	r.mu.Unlock()
@@ -65,6 +76,7 @@ func (r *ReplicationManager) ReplicateFile(hash string) error {
 
 	return nil
 }
+
 
 func (r *ReplicationManager) GetStats() map[string]interface{} {
 	r.mu.Lock()

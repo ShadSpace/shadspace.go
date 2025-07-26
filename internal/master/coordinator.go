@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lestonEth/shadspace/internal/core"
 	"github.com/lestonEth/shadspace/internal/p2p"
 )
 
@@ -14,7 +13,7 @@ type Coordinator struct {
 	cancel     context.CancelFunc
 	wg         sync.WaitGroup
 	registry   *FileRegistry
-	network    *NetworkManager
+	network    *p2p.NetworkManager
 	replicator *ReplicationManager
 	cfg        Config
 	startTime  time.Time
@@ -25,7 +24,7 @@ func NewCoordinator(parentCtx context.Context, cfg Config) (*Coordinator, error)
 
 	// Initialize components
 	registry := NewFileRegistry()
-	network, err := NewNetworkManager(ctx, cfg.Network)
+	network, err := p2p.NewNetworkManager(ctx, cfg.Network)
 	if err != nil {
 		cancel()
 		return nil, err

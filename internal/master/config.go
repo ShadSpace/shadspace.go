@@ -3,11 +3,12 @@ package master
 import (
 	"time"
 	
+	"github.com/lestonEth/shadspace/internal/p2p"
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Network      NetworkConfig
+	Network      p2p.NetworkConfig
 	Storage      StorageConfig
 	Replication  ReplicationConfig
 	Verification VerificationConfig

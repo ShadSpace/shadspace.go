@@ -78,6 +78,16 @@ func (n *NetworkManager) GetPeers() []peer.AddrInfo {
 	return peers
 }
 
+func (n *NetworkManager) GetPeerCount() int {
+	n.peersMu.RLock()
+	defer n.peersMu.RUnlock()
+	return len(n.peers)
+}
+
+func (n *NetworkManager) Host() host.Host {
+	return n.host
+}
+
 func (n *NetworkManager) Stop() {
 	n.host.Close()
 }

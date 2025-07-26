@@ -1,0 +1,22 @@
+network:
+  listenAddr: "/ip4/0.0.0.0/tcp/53798"
+  bootstrap_peers: []
+  protocol_timeout: "30s"
+
+storage:
+  replication_factor: 3
+  sharding_enabled: true
+  proof_ttl: "720h" # 30 days
+
+replication:
+  strategy: "simple" # simple|priority|geo
+  min_replicas: 2
+  health_check_interval: "60s"
+
+verification:
+  batch_size: 100
+  timeout: "10s"
+  max_verifiers: 10
+
+api:
+  listen_addr: ":8080"
