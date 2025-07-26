@@ -2,6 +2,7 @@ package master
 
 import (
 	"net/http"
+	"time"
 	
 	"github.com/gin-gonic/gin"
 )
@@ -38,4 +39,9 @@ func (c *Coordinator) handleGetFile(ctx *gin.Context) {
 		"metadata": meta,
 		"peers":    peers,
 	})
+}
+
+func (c *Coordinator) handleUploadFile(ctx *gin.Context) {
+	// TODO: Implement file upload logic here
+	ctx.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented"})
 }

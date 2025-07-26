@@ -3,8 +3,10 @@ package master
 import (
 	"context"
 	"sync"
+	"time"
 
-	"github.com/yourorg/shadspace/internal/core"
+	"github.com/lestonEth/shadspace/internal/core"
+	"github.com/lestonEth/shadspace/internal/p2p"
 )
 
 type Coordinator struct {
@@ -15,6 +17,7 @@ type Coordinator struct {
 	network    *NetworkManager
 	replicator *ReplicationManager
 	cfg        Config
+	startTime  time.Time
 }
 
 func NewCoordinator(parentCtx context.Context, cfg Config) (*Coordinator, error) {
@@ -37,6 +40,7 @@ func NewCoordinator(parentCtx context.Context, cfg Config) (*Coordinator, error)
 		network:    network,
 		replicator: replicator,
 		cfg:        cfg,
+		startTime:  time.Now(),
 	}, nil
 }
 
