@@ -83,10 +83,9 @@ func (f *FarmerNode) Start() error {
 		return err
 	}
 
-	f.wg.Add(1)
+	f.wg.Add(2)
 	go f.monitorStorage()
 	go f.monitorBootstrapConnections()
-
 
 	return nil
 }
@@ -116,6 +115,56 @@ func (f *FarmerNode) monitorBootstrapConnections() {
 			return
 		}
 	}
+}
+
+func (f *FarmerNode) monitorStorage() {
+    defer f.wg.Done()
+
+    // Check storage immediately on startup
+    f.checkStorageStatus()
+
+    // Set up periodic checking
+    ticker := time.NewTicker(5 * time.Minute)
+    defer ticker.Stop()
+
+    for {
+        select {
+        case <-ticker.C:
+            f.checkStorageStatus()
+        case <-f.ctx.Done():
+            log.Println("Stopping storage monitoring")
+            return
+        }
+    }
+}
+
+func (f *FarmerNode) checkStorageStatus() {
+    stats := f.storage.GetStats()
+    
+    // Log basic storage info
+    log.Printf("[Storage] Chunks: %d, Used: %.2fGB/%.2fGB (%.1f%%)",
+        stats["chunks"],
+        stats["usedGB"],
+        stats["allocatedGB"],
+        stats["utilization"])
+    
+    // Check for critical conditions
+    if avail, ok := stats["availableGB"].(float64); ok {
+        if avail < 1.0 { // Critical if less than 1GB available
+            log.Printf("CRITICAL: Only %.2fGB storage remaining", avail)
+        } else if avail < 5.0 { // Warning if less than 5GB
+            log.Printf("WARNING: Low storage - %.2fGB remaining", avail)
+        }
+    }
+    
+    // Check disk space against reserved threshold
+    if diskFree, ok := stats["diskFreeGB"].(float64); ok {
+        reserved := float64(f.cfg.Storage.ReservedSpaceGB)
+        if diskFree < reserved {
+            log.Printf("CRITICAL: Disk space below reserved threshold (%.2fGB < %.2fGB)", 
+                diskFree, reserved)
+        }
+    }
 }
 
 func (f *FarmerNode) hasActiveBootstrapConnection() bool {
@@ -153,19 +202,3 @@ func (f *FarmerNode) Stop() {
 	f.storage.Close()
 }
 
-func (f *FarmerNode) monitorStorage() {
-	defer f.wg.Done()
-
-	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			stats := f.storage.GetStats()
-			log.Printf("Storage stats: %+v", stats)
-		case <-f.ctx.Done():
-			return
-		}
-	}
-}
