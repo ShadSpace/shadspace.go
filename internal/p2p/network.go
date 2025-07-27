@@ -16,6 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/libp2p/go-libp2p/core/protocol"
 )
 
 type NetworkManager struct {
@@ -32,9 +33,15 @@ type connNotifee struct {
 }
 
 type NetworkConfig struct {
-	ListenAddr   string
-	PrivateKey   string
+	ListenAddr     string
+	PrivateKey     string
 	BootstrapPeers []string
+	Protocols      []ProtocolHandler
+}
+
+type ProtocolHandler struct {
+	ProtocolID string
+	Handler    func(network.Stream)
 }
 
 func NewNetworkManager(ctx context.Context, cfg NetworkConfig) (*NetworkManager, error) {
@@ -97,14 +104,11 @@ func decodePrivateKey(keyStr string) (crypto.PrivKey, error) {
 }
 
 func (n *NetworkManager) Start() error {
-	// Set up stream handlers
-	n.host.SetStreamHandler("/shadspace/1.0.0", n.handleControlStream)
-	n.host.SetStreamHandler("/shadspace/file/1.0.0", n.handleFileStream)
+	for _, ph := range n.cfg.Protocols {
+		n.host.SetStreamHandler(protocol.ID(ph.ProtocolID), ph.Handler)
+		log.Printf("Registered handler for protocol: %s", ph.ProtocolID)
+	}
 
-	// Add farmer-specific handlers
-	n.host.SetStreamHandler("/shadspace/storage/1.0.0", n.handleStorageRequest)
-	n.host.SetStreamHandler("/shadspace/proof/1.0.0", n.handleProofVerification)
-	
 	// Bootstrap connection
 	if len(n.cfg.BootstrapPeers) > 0 {
 		go n.bootstrapConnect()
@@ -137,17 +141,6 @@ func (n *connNotifee) Disconnected(_ network.Network, conn network.Conn) {
     
     delete(n.nm.peers, peerID)
     log.Printf("Removed disconnected peer: %s", peerID)
-}
-
-
-func (n *NetworkManager) handleControlStream(s network.Stream) {
-	// Handle control messages
-	defer s.Close()
-}
-
-func (n *NetworkManager) handleFileStream(s network.Stream) {
-	// Handle file transfers
-	defer s.Close()
 }
 
 func (n *NetworkManager) GetPeers() []peer.AddrInfo {
@@ -215,16 +208,6 @@ func (n *NetworkManager) bootstrapConnect() {
 	}
 }
 
-func (n *NetworkManager) handleStorageRequest(s network.Stream) {
-	defer s.Close()
-	// Handle storage requests from master nodes
-}
-
-func (n *NetworkManager) handleProofVerification(s network.Stream) {
-	defer s.Close()
-	// Handle proof verification requests
-}
-
 func (n *NetworkManager) IsConnectedTo(peerID peer.ID) bool {
 	n.peersMu.RLock()
 	defer n.peersMu.RUnlock()
@@ -232,4 +215,3 @@ func (n *NetworkManager) IsConnectedTo(peerID peer.ID) bool {
 	_, exists := n.peers[peerID]
 	return exists
 }
-

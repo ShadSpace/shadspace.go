@@ -17,19 +17,47 @@ import (
 	"github.com/klauspost/reedsolomon"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/lestonEth/shadspace/internal/core"
+	"github.com/gin-contrib/cors"
 
 )
 
 func (c *Coordinator) ServeAPI(addr string) error {
 	router := gin.Default()
-	
+
+	// Configure CORS
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
 	router.GET("/status", c.handleStatus)
 	router.GET("/files/:hash", c.handleGetFile)
 	router.POST("/files", c.handleUploadFile)
 	router.GET("/reconstruct/:hash", c.handleReconstructFile)
-	
+
 	return router.Run(addr)
 }
+
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
+}
+
 
 func (c *Coordinator) handleStatus(ctx *gin.Context) {
 	peers := c.network.GetPeers()
@@ -81,6 +109,8 @@ func (c *Coordinator) handleUploadFile(ctx *gin.Context) {
 		Hash:      hashStr,
 		CreatedAt: time.Now(),
 	}
+
+	log.Printf("Uploading file: %+v", meta)
 
 	storageNodes := c.selectStorageNodes()
 	log.Printf("Selected storage nodes: %v", storageNodes)

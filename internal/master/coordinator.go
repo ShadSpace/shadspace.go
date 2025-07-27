@@ -4,12 +4,12 @@ import (
 	"context"
 	"sync"
 	"time"
-	"bufio"
 
 	"github.com/lestonEth/shadspace/internal/p2p"
 	"github.com/klauspost/reedsolomon"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/lestonEth/shadspace/internal/core"
+	"github.com/libp2p/go-libp2p/core/network"
 	"fmt"
 	"log"
 	"encoding/gob"
@@ -31,23 +31,43 @@ func NewCoordinator(parentCtx context.Context, cfg Config) (*Coordinator, error)
 
 	// Initialize components
 	registry := NewFileRegistry()
-	network, err := p2p.NewNetworkManager(ctx, cfg.Network)
+
+	// First create the Coordinator without network
+	coord := &Coordinator{
+		ctx:        ctx,
+		cancel:     cancel,
+		registry:   registry,
+		cfg:        cfg,
+		startTime:  time.Now(),
+	}
+
+	networkCfg := p2p.NetworkConfig{
+        ListenAddr:     cfg.Network.ListenAddr,
+        BootstrapPeers: cfg.Network.BootstrapPeers,
+        Protocols: []p2p.ProtocolHandler{
+            {
+                ProtocolID: "/shadspace/control/1.0.0",
+                Handler:    coord.handleControlStream,
+            },
+        },
+    }
+
+	network, err := p2p.NewNetworkManager(ctx, networkCfg)
 	if err != nil {
 		cancel()
 		return nil, err
 	}
 
-	replicator := NewReplicationManager(network, registry, cfg.Replication)
+	coord.network = network
+    coord.replicator = NewReplicationManager(network, registry, cfg.Replication)
 
-	return &Coordinator{
-		ctx:        ctx,
-		cancel:     cancel,
-		registry:   registry,
-		network:    network,
-		replicator: replicator,
-		cfg:        cfg,
-		startTime:  time.Now(),
-	}, nil
+    return coord, nil
+}
+
+func (c *Coordinator) handleControlStream(stream network.Stream) {
+    defer stream.Close()
+    // Handle control messages if needed
+    log.Println("Received control stream")
 }
 
 func (c *Coordinator) Start() error {
@@ -185,59 +205,45 @@ func (c *Coordinator) distributeWithErasureCoding(meta core.FileMetadata, data [
 }
 
 func (c *Coordinator) sendShardToNode(shard []byte, meta core.FileMetadata, node peer.AddrInfo) error {
-    ctx, cancel := context.WithTimeout(c.ctx, 60*time.Second)
+    ctx, cancel := context.WithTimeout(c.ctx, 2*time.Minute) // Increased timeout
     defer cancel()
 
-    log.Printf("Sending shard %d to %s", meta.ShardIndex, node.ID)
-
+    log.Printf("Opening stream to %s for shard %d", node.ID, meta.ShardIndex)
     stream, err := c.network.Host().NewStream(ctx, node.ID, "/shadspace/storage/1.0.0")
+	log.Printf("Stream %d", stream)
     if err != nil {
-        return fmt.Errorf("stream failed: %w", err)
+        return fmt.Errorf("failed to open stream: %w", err)
     }
     defer stream.Close()
 
-    // Set deadline for the entire operation
-    if err := stream.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
-        return fmt.Errorf("deadline failed: %w", err)
+    // Set deadline
+    if err := stream.SetDeadline(time.Now().Add(time.Minute)); err != nil {
+        return fmt.Errorf("failed to set deadline: %w", err)
     }
 
-    bufStream := bufio.NewReadWriter(
-        bufio.NewReader(stream),
-        bufio.NewWriter(stream),
-    )
-    enc := gob.NewEncoder(bufStream)
-    dec := gob.NewDecoder(bufStream)
+    enc := gob.NewEncoder(stream)
+    dec := gob.NewDecoder(stream)
 
     // 1. Send metadata
     if err := enc.Encode(meta); err != nil {
-        return fmt.Errorf("metadata send failed: %w", err)
+        return fmt.Errorf("failed to send metadata: %w", err)
     }
 
-    // 2. Flush metadata
-    if err := bufStream.Flush(); err != nil {
-        return fmt.Errorf("metadata flush failed: %w", err)
+    // 2. Send shard data
+    if _, err := stream.Write(shard); err != nil {
+        return fmt.Errorf("failed to send shard: %w", err)
     }
 
-    // 3. Send shard
-    if _, err := bufStream.Write(shard); err != nil {
-        return fmt.Errorf("shard send failed: %w", err)
-    }
-
-    // 4. Flush shard
-    if err := bufStream.Flush(); err != nil {
-        return fmt.Errorf("shard flush failed: %w", err)
-    }
-
-    // 5. Wait for ACK
+    // 3. Wait for ACK
     var ack string
     if err := dec.Decode(&ack); err != nil {
-        return fmt.Errorf("ACK receive failed: %w", err)
+        return fmt.Errorf("failed to receive ACK: %w", err)
     }
 
     if ack != "OK" {
-        return fmt.Errorf("invalid ACK: %s", ack)
+        return fmt.Errorf("invalid ACK received: %s", ack)
     }
 
-    log.Printf("Shard %d stored on %s", meta.ShardIndex, node.ID)
+    log.Printf("Shard %d successfully stored on %s", meta.ShardIndex, node.ID)
     return nil
 }

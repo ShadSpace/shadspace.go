@@ -13,10 +13,8 @@ import (
 	"github.com/lestonEth/shadspace/internal/p2p"
 	"github.com/lestonEth/shadspace/internal/core"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/libp2p/go-libp2p/core/network"
-
 )
 
 type FarmerNode struct {
@@ -33,81 +31,88 @@ type FarmerNode struct {
 
 
 func NewFarmerNode(parentCtx context.Context, cfg Config) (*FarmerNode, error) {
-	ctx, cancel := context.WithCancel(parentCtx)
+    ctx, cancel := context.WithCancel(parentCtx)
 
-	// Parse bootstrap peers
-	bootstrapPeers := make([]peer.AddrInfo, 0, len(cfg.Network.BootstrapPeers))
+    // Parse bootstrap peers
+    bootstrapPeers := make([]peer.AddrInfo, 0, len(cfg.Network.BootstrapPeers))
+    for _, addrStr := range cfg.Network.BootstrapPeers {
+        ma, err := multiaddr.NewMultiaddr(addrStr)
+        if err != nil {
+            cancel()
+            return nil, fmt.Errorf("invalid bootstrap address %s: %w", addrStr, err)
+        }
+        addrInfo, err := peer.AddrInfoFromP2pAddr(ma)
+        if err != nil {
+            cancel()
+            return nil, fmt.Errorf("invalid bootstrap peer info %s: %w", addrStr, err)
+        }
+        bootstrapPeers = append(bootstrapPeers, *addrInfo)
+    }
 
-	for _, addrStr := range cfg.Network.BootstrapPeers {
-		ma, err := multiaddr.NewMultiaddr(addrStr)
-		if err != nil {
-			cancel()
-			return nil, fmt.Errorf("invalid bootstrap address %s: %w", addrStr, err)
-		}
-		addrInfo, err := peer.AddrInfoFromP2pAddr(ma)
-		if err != nil {
-			cancel()
-			return nil, fmt.Errorf("invalid bootstrap peer info %s: %w", addrStr, err)
-		}
-		bootstrapPeers = append(bootstrapPeers, *addrInfo)
-	}
+    // First create the node without network
+    node := &FarmerNode{
+        ctx:            ctx,
+        cancel:         cancel,
+        cfg:            cfg,
+        bootstrapPeers: bootstrapPeers,
+        lastReconnect:  time.Now(),
+    }
 
+    // Initialize storage and verifier
+    storage, err := NewStorageManager(cfg.Storage)
+    if err != nil {
+        cancel()
+        return nil, err
+    }
+    node.storage = storage
 
-	network, err := p2p.NewNetworkManager(ctx, p2p.NetworkConfig{
-		ListenAddr:     cfg.Network.ListenAddr,
-		BootstrapPeers: cfg.Network.BootstrapPeers,
-	})
+    verifier := NewProofVerifier()
+    node.verifier = verifier
 
-	if err != nil {
-		cancel()
-		return nil, err
-	}
+    // Create network config with node's handlers
+    networkCfg := p2p.NetworkConfig{
+        ListenAddr:     cfg.Network.ListenAddr,
+        BootstrapPeers: cfg.Network.BootstrapPeers,
+        Protocols: []p2p.ProtocolHandler{
+            {
+                ProtocolID: "/shadspace/storage/1.0.0",
+                Handler:    node.handleStorageStream,
+            },
+            {
+                ProtocolID: "/shadspace/retrieve/1.0.0",
+                Handler:    node.handleRetrieveStream,
+            },
+        },
+    }
 
-	storage, err := NewStorageManager(cfg.Storage)
-	if err != nil {
-		cancel()
-		return nil, err
-	}
+    // Initialize network
+    network, err := p2p.NewNetworkManager(ctx, networkCfg)
+    if err != nil {
+        cancel()
+        return nil, err
+    }
+    node.network = network
 
-	verifier := NewProofVerifier()
-
-	node := &FarmerNode{
-		ctx:            ctx,
-		cancel:         cancel,
-		network:        network,
-		storage:        storage,
-		verifier:       verifier,
-		cfg:            cfg,
-		bootstrapPeers: bootstrapPeers,
-		lastReconnect:  time.Now(),
-	}
-
-	// Register stream handlers
-	network.Host().SetStreamHandler(protocol.ID("/shadspace/storage/1.0.0"), node.handleStorageStream)
-	network.Host().SetStreamHandler(protocol.ID("/shadspace/retrieve/1.0.0"), node.handleRetrieveStream)
-
-	return node, nil
+    return node, nil
 }
 
 func (f *FarmerNode) handleStorageStream(stream network.Stream) {
+    log.Println("New storage stream opened from:", stream.Conn().RemotePeer())
     defer func() {
         if err := stream.Close(); err != nil {
             log.Printf("Error closing stream: %v", err)
         }
     }()
 
-    // Set a deadline for the entire operation
-    if err := stream.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
+    // Set more generous timeout for local testing
+    if err := stream.SetDeadline(time.Now().Add(2 * time.Minute)); err != nil {
         log.Printf("Failed to set deadline: %v", err)
         return
     }
 
-    bufStream := bufio.NewReadWriter(
-        bufio.NewReader(stream),
-        bufio.NewWriter(stream),
-    )
-    dec := gob.NewDecoder(bufStream)
-    enc := gob.NewEncoder(bufStream)
+    // Use raw stream instead of bufio to avoid buffering issues
+    dec := gob.NewDecoder(stream)
+    enc := gob.NewEncoder(stream)
 
     // 1. Read metadata
     var meta core.FileMetadata
@@ -115,14 +120,15 @@ func (f *FarmerNode) handleStorageStream(stream network.Stream) {
         log.Printf("Failed to decode metadata: %v", err)
         return
     }
+    log.Printf("Received metadata: %+v", meta)
 
-    // 2. Read shard data (with size limit)
-    maxShardSize := 256 << 20 // 256MB
-    shard, err := io.ReadAll(io.LimitReader(bufStream, int64(maxShardSize)))
+    // 2. Read shard data directly from stream
+    shard, err := io.ReadAll(stream)
     if err != nil {
-        log.Printf("Failed to read shard: %v", err)
+        log.Printf("Failed to read shard data: %v", err)
         return
     }
+    log.Printf("Received shard (%d bytes)", len(shard))
 
     // 3. Store the shard
     if err := f.storage.StoreChunk(meta.Hash, shard, &meta); err != nil {
@@ -136,14 +142,7 @@ func (f *FarmerNode) handleStorageStream(stream network.Stream) {
         return
     }
 
-    // 5. Flush the ACK
-    if err := bufStream.Flush(); err != nil {
-        log.Printf("Failed to flush ACK: %v", err)
-        return
-    }
-
-    log.Printf("Stored shard %d/%d (%s, %d bytes)", 
-        meta.ShardIndex+1, meta.TotalShards, meta.Hash[:8], len(shard))
+    log.Println("Shard stored and ACK sent successfully")
 }
 
 func (f *FarmerNode) handleRetrieveStream(stream network.Stream) {
