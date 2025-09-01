@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"sync"
 	"context"
+	"embed"
+	"html/template"
 	
 	"github.com/gin-gonic/gin"
 	"github.com/klauspost/reedsolomon"
@@ -38,6 +40,15 @@ func (c *Coordinator) ServeAPI(addr string) error {
 	router.GET("/files/:hash", c.handleGetFile)
 	router.POST("/files", c.handleUploadFile)
 	router.GET("/reconstruct/:hash", c.handleReconstructFile)
+	router.GET("/dashboard/nodes", c.handleGetNodes)
+	router.GET("/dashboard/node/:id", c.handleGetNodeMetrics)
+
+	templ := template.Must(template.New("").ParseFS(dashboardFS, "dashboard.html"))
+	router.SetHTMLTemplate(templ)
+
+	router.GET("/dashboard", func(ctx *gin.Context) {
+		ctx.HTML(http.StatusOK, "dashboard.html", nil)
+	})
 
 	return router.Run(addr)
 }
@@ -219,3 +230,67 @@ func (c *Coordinator) retrieveShardFromNode(hash string, nodeID peer.ID) ([]byte
 
 	return shard, nil
 }
+
+func (c *Coordinator) handleGetNodes(ctx *gin.Context) {
+	c.metricsLock.RLock()
+	defer c.metricsLock.RUnlock()
+
+	nodes := make([]gin.H, 0, len(c.nodeMetrics))
+	for id, metrics := range c.nodeMetrics {
+		nodes = append(nodes, gin.H{
+			"id": id.String(),
+			"uptime": metrics.Uptime,
+			"cpu": metrics.CPU.Busy,
+			"mem_used": metrics.Memory.UsedPerc,
+			"disk":    metrics.Disk,
+            "network": metrics.Network,
+            "load":    metrics.Load,
+            "storage": metrics.Storage,
+		})
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"nodes": nodes})
+}
+
+func (c *Coordinator) handleGetNodeMetrics(ctx *gin.Context) {
+	nodeID := ctx.Param("id")
+	pid, err := peer.Decode(nodeID)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid node ID"})
+		return
+	}
+	
+	c.metricsLock.RLock()
+	metrics, exists := c.nodeMetrics[pid]
+	c.metricsLock.RUnlock()
+	
+	if !exists {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "node not found"})
+		return
+	}
+	
+	ctx.JSON(http.StatusOK, gin.H{
+        "metrics": gin.H{
+            "timestamp": metrics.Timestamp,
+            "cpu":       gin.H{"busy": metrics.CPU.Busy},
+            "memory": gin.H{
+                "used_perc": metrics.Memory.UsedPerc,
+                "swap_used": metrics.Memory.SwapUsed,
+                "swap_total": metrics.Memory.SwapTotal,
+            },
+            "disk": gin.H{
+                "used_perc": metrics.Disk.UsedPerc,
+            },
+            "network": gin.H{
+                "bytes_sent": metrics.Network.BytesSent,
+                "bytes_recv": metrics.Network.BytesRecv,
+            },
+            "storage": gin.H{
+                "used_perc": metrics.Storage.UsedPerc,
+            },
+        },
+    })
+}
+
+//go:embed dashboard.html
+var dashboardFS embed.FS

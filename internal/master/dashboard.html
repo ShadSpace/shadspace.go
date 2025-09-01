@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Shadspace Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #1e293b;
+            padding: 16px 24px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            font-size: 0.875rem;
+        }
+
+        .control-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-item select {
+            background: #334155;
+            border: 1px solid #475569;
+            color: #e2e8f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        .main-content {
+            padding: 24px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .metric-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .metric-title {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .gauge-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 12px;
+        }
+
+        .gauge-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .gauge-unit {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .node-list {
+            margin-bottom: 32px;
+        }
+
+        .node-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .node-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .node-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .node-metric {
+            text-align: center;
+        }
+
+        .node-metric-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        .node-metric-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #64748b;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+
+        .charts-section {
+            margin-top: 32px;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 24px;
+        }
+
+        .chart-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #e2e8f0;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+        }
+
+        .node-details {
+            display: none;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .status-item {
+            text-align: center;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .status-label {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+
+        .status-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        /* Gauge styles */
+        .gauge-busy {
+            color: #f59e0b;
+        }
+
+        .gauge-low {
+            color: #10b981;
+        }
+
+        .gauge-medium {
+            color: #f59e0b;
+        }
+
+        .gauge-high {
+            color: #ef4444;
+        }
+
+        .gauge-na {
+            color: #64748b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Shadspace Dashboard</h1>
+        <div class="controls">
+            <div class="control-item">
+                <span>Network:</span>
+                <select id="network-select">
+                    <option value="development">development</option>
+                    <option value="mainnet">mainnet</option>
+                </select>
+            </div>
+            <div class="control-item">
+                <span>Node:</span>
+                <select id="node-select">
+                    <option value="all">All Nodes</option>
+                </select>
+            </div>
+            <div class="control-item">
+                <span>Last 24 hours</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div id="overview-section">
+            <div class="metrics-grid" id="overview-metrics">
+                <!-- Overview metrics will be populated here -->
+            </div>
+
+            <div class="node-list">
+                <h2 style="margin-bottom: 20px; font-size: 1.25rem; font-weight: 600;">Cluster Nodes</h2>
+                <div id="nodes-container"></div>
+            </div>
+        </div>
+
+        <div id="node-details" class="node-details">
+            <button class="btn btn-secondary back-btn" onclick="showOverview()">← Back to Overview</button>
+
+            <h2 style="margin-bottom: 24px; font-size: 1.5rem; font-weight: 600;">
+                Node Metrics: <span id="node-id"></span>
+            </h2>
+
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">Uptime</div>
+                    <div class="status-value" id="uptime">-</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">CPU Usage</div>
+                    <div class="status-value" id="cpu-usage">-</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Memory Used</div>
+                    <div class="status-value" id="mem-usage">-</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Storage Used</div>
+                    <div class="status-value" id="storage-usage">-</div>
+                </div>
+            </div>
+
+            <div class="charts-section">
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-title">CPU Usage Over Time</div>
+                        <div class="chart-container">
+                            <canvas id="cpu-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-title">Memory Usage</div>
+                        <div class="chart-container">
+                            <canvas id="mem-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-title">Disk Usage</div>
+                        <div class="chart-container">
+                            <canvas id="disk-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-title">Network Traffic</div>
+                        <div class="chart-container">
+                            <canvas id="network-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allNodes = [];
+        let charts = {};
+
+        // Fetch nodes and render overview
+        async function loadNodes() {
+            try {
+                const res = await fetch('/dashboard/nodes');
+                const data = await res.json();
+                allNodes = data.nodes;
+
+                renderOverviewMetrics();
+                renderNodesList();
+                populateNodeSelect();
+            } catch (error) {
+                console.error('Failed to load nodes:', error);
+                showError('Failed to load nodes. Please try again later.');
+            }
+        }
+
+        function renderOverviewMetrics() {
+            if (allNodes.length === 0) return;
+
+            const avgCpu = allNodes.reduce((sum, node) => sum + node.cpu, 0) / allNodes.length;
+            const avgMem = allNodes.reduce((sum, node) => sum + node.mem_used, 0) / allNodes.length;
+            const totalNodes = allNodes.length;
+            const activeNodes = allNodes.filter(node => node.cpu !== undefined).length;
+
+            const metricsContainer = document.getElementById('overview-metrics');
+            metricsContainer.innerHTML = `
+                <div class="metric-card">
+                    <div class="metric-title">Average CPU Usage</div>
+                    <div class="gauge-container">
+                        <canvas id="cpu-gauge" width="120" height="120"></canvas>
+                    </div>
+                    <div class="gauge-value gauge-${getGaugeClass(avgCpu)}">${avgCpu.toFixed(1)}%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Average Memory Usage</div>
+                    <div class="gauge-container">
+                        <canvas id="mem-gauge" width="120" height="120"></canvas>
+                    </div>
+                    <div class="gauge-value gauge-${getGaugeClass(avgMem)}">${avgMem.toFixed(1)}%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Total Nodes</div>
+                    <div class="gauge-value">${totalNodes}</div>
+                    <div class="gauge-unit">nodes</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Active Nodes</div>
+                    <div class="gauge-value gauge-${activeNodes === totalNodes ? 'low' : 'medium'}">${activeNodes}</div>
+                    <div class="gauge-unit">active</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Cluster Uptime</div>
+                    <div class="gauge-value">1.2</div>
+                    <div class="gauge-unit">years</div>
+                </div>
+            `;
+
+            // Draw gauges
+            drawGauge('cpu-gauge', avgCpu);
+            drawGauge('mem-gauge', avgMem);
+        }
+
+        function renderNodesList() {
+            const container = document.getElementById('nodes-container');
+
+            if (allNodes.length === 0) {
+                container.innerHTML = '<div class="error-message">No nodes available</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            allNodes.forEach(node => {
+                const nodeCard = document.createElement('div');
+                nodeCard.className = 'node-card';
+                nodeCard.innerHTML = `
+                    <div class="node-header">
+                        <div class="node-title">Node: ${node.id.slice(0, 8)}</div>
+                        <button class="btn" onclick="loadNodeMetrics('${node.id}')">View Details</button>
+                    </div>
+                    <div class="node-metrics">
+                        <div class="node-metric">
+                            <div class="node-metric-label">CPU Usage</div>
+                            <div class="node-metric-value gauge-${getGaugeClass(node.cpu)}">${node.cpu.toFixed(1)}%</div>
+                        </div>
+                        <div class="node-metric">
+                            <div class="node-metric-label">Memory Usage</div>
+                            <div class="node-metric-value gauge-${getGaugeClass(node.mem_used)}">${node.mem_used.toFixed(1)}%</div>
+                        </div>
+                        <div class="node-metric">
+                            <div class="node-metric-label">Uptime</div>
+                            <div class="node-metric-value">${node.uptime}</div>
+                        </div>
+                        <div class="node-metric">
+                            <div class="node-metric-label">Status</div>
+                            <div class="node-metric-value gauge-low">Online</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(nodeCard);
+            });
+        }
+
+        function populateNodeSelect() {
+            const select = document.getElementById('node-select');
+            select.innerHTML = '<option value="all">All Nodes</option>';
+
+            allNodes.forEach(node => {
+                const option = document.createElement('option');
+                option.value = node.id;
+                option.textContent = `Node ${node.id.slice(0, 8)}`;
+                select.appendChild(option);
+            });
+        }
+
+        // Load metrics for specific node
+        async function loadNodeMetrics(nodeId) {
+            try {
+                document.getElementById('node-id').textContent = nodeId.slice(0, 8);
+
+                const res = await fetch(`/dashboard/node/${nodeId}`);
+                const data = await res.json();
+                const metrics = data.metrics;
+
+                // Update status values
+                document.getElementById('uptime').textContent = formatDuration(timeSince(metrics.timestamp));
+                document.getElementById('cpu-usage').textContent = `${metrics.cpu.busy.toFixed(1)}%`;
+                document.getElementById('mem-usage').textContent = `${metrics.memory.used_perc.toFixed(1)}%`;
+                document.getElementById('storage-usage').textContent = `${metrics.storage.used_perc.toFixed(1)}%`;
+
+                // Generate mock time series data
+                const timeLabels = Array.from({ length: 24 }, (_, i) => `${(new Date().getHours() - 23 + i + 24) % 24}:00`);
+                const generateData = (base) => Array.from({ length: 24 }, () => base + (Math.random() - 0.5) * 20);
+
+                // Render charts
+                renderTimeSeriesChart('cpu-chart', 'CPU Usage (%)', {
+                    'Busy System': generateData(metrics.cpu.busy),
+                    'Busy User': generateData(metrics.cpu.busy * 0.6),
+                    'Idle': generateData(100 - metrics.cpu.busy)
+                }, timeLabels);
+
+                renderChart('mem-chart', 'Memory Usage', [
+                    { label: 'RAM Used', value: metrics.memory.used_perc, color: '#3b82f6' },
+                    { label: 'RAM Free', value: 100 - metrics.memory.used_perc, color: '#10b981' },
+                    { label: 'Swap Used', value: (metrics.memory.swap_used / metrics.memory.swap_total) * 100, color: '#ef4444' }
+                ], 'doughnut');
+
+                renderChart('disk-chart', 'Disk Usage', [
+                    { label: 'Used', value: metrics.storage.used_perc, color: '#f59e0b' },
+                    { label: 'Free', value: 100 - metrics.storage.used_perc, color: '#10b981' }
+                ], 'doughnut');
+
+                renderTimeSeriesChart('network-chart', 'Network Traffic (MB/s)', {
+                    'Sent': generateData(metrics.network.bytes_sent / 1e6),
+                    'Received': generateData(metrics.network.bytes_recv / 1e6)
+                }, timeLabels);
+
+                showNodeDetails();
+            } catch (error) {
+                console.error('Failed to load node metrics:', error);
+                showError('Failed to load node metrics. Please try again.');
+            }
+        }
+
+        function renderChart(canvasId, title, data, type = 'bar') {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+
+            if (charts[canvasId]) {
+                charts[canvasId].destroy();
+            }
+
+            const config = {
+                type: type,
+                data: {
+                    labels: data.map(d => d.label),
+                    datasets: [{
+                        data: data.map(d => d.value),
+                        backgroundColor: data.map(d => d.color || '#3b82f6'),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: type === 'doughnut',
+                            position: 'bottom',
+                            labels: { color: '#e2e8f0' }
+                        }
+                    },
+                    scales: type !== 'doughnut' ? {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    } : {}
+                }
+            };
+
+            charts[canvasId] = new Chart(ctx, config);
+        }
+
+        function renderTimeSeriesChart(canvasId, title, datasets, labels) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+
+            if (charts[canvasId]) {
+                charts[canvasId].destroy();
+            }
+
+            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+            charts[canvasId] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: Object.entries(datasets).map(([label, data], index) => ({
+                        label: label,
+                        data: data,
+                        borderColor: colors[index % colors.length],
+                        backgroundColor: colors[index % colors.length] + '20',
+                        fill: true,
+                        tension: 0.4
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#e2e8f0' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function drawGauge(canvasId, value) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const centerX = 60;
+            const centerY = 60;
+            const radius = 45;
+
+            ctx.clearRect(0, 0, 120, 120);
+
+            // Background circle
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 8;
+            ctx.stroke();
+
+            // Progress arc
+            const startAngle = -Math.PI / 2;
+            const endAngle = startAngle + (value / 100) * 2 * Math.PI;
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+            ctx.strokeStyle = getGaugeColor(value);
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        function getGaugeColor(value) {
+            if (value < 30) return '#10b981';
+            if (value < 70) return '#f59e0b';
+            return '#ef4444';
+        }
+
+        function getGaugeClass(value) {
+            if (value < 30) return 'low';
+            if (value < 70) return 'medium';
+            return 'high';
+        }
+
+        function showNodeDetails() {
+            document.getElementById('overview-section').style.display = 'none';
+            document.getElementById('node-details').style.display = 'block';
+        }
+
+        function showOverview() {
+            document.getElementById('node-details').style.display = 'none';
+            document.getElementById('overview-section').style.display = 'block';
+        }
+
+        function showError(message) {
+            const container = document.getElementById('nodes-container');
+            container.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+
+        function formatDuration(duration) {
+            const days = Math.floor(duration / (24 * 60 * 60 * 1000));
+            const hours = Math.floor((duration % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+            return `${days}d ${hours}h`;
+        }
+
+        function timeSince(timestamp) {
+            return new Date() - new Date(timestamp);
+        }
+
+        // Initialize dashboard
+        loadNodes();
+    </script>
+</body>
+
+</html>

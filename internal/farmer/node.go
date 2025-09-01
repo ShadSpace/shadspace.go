@@ -27,6 +27,7 @@ type FarmerNode struct {
 	cfg          Config
 	bootstrapPeers []peer.AddrInfo
 	lastReconnect time.Time
+    startTime: time.Time
 }
 
 
@@ -56,6 +57,7 @@ func NewFarmerNode(parentCtx context.Context, cfg Config) (*FarmerNode, error) {
         cfg:            cfg,
         bootstrapPeers: bootstrapPeers,
         lastReconnect:  time.Now(),
+        startTime:      time.Now(),
     }
 
     // Initialize storage and verifier
@@ -81,6 +83,10 @@ func NewFarmerNode(parentCtx context.Context, cfg Config) (*FarmerNode, error) {
             {
                 ProtocolID: "/shadspace/retrieve/1.0.0",
                 Handler:    node.handleRetrieveStream,
+            },
+            {
+                ProtocolID: "/shadspace/metrics/1.0.0",
+                Handler:    node.handleMetricsStream,
             },
         },
     }
@@ -179,6 +185,21 @@ func (f *FarmerNode) handleRetrieveStream(stream network.Stream) {
 	if err := bufStream.Flush(); err != nil {
 		log.Printf("Failed to flush shard data: %v", err)
 	}
+}
+
+func (f *FarmerNode) handleMetricsStream(stream network.Stream) {
+    defer stream.Close()
+
+    metrics, err := f.GatherMetrics()
+    if err != nil {
+        log.Printf("Failed to gather metrics: %v", err)
+        return
+    }
+
+    enc := gob.NewEncoder(stream)
+    if err := enc.Encode(metrics); err != nil {
+        log.Printf("Failed to send metrics: %v", err) // Added missing parenthesis here
+    }
 }
 
 func (f *FarmerNode) Start() error {

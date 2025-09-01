@@ -10,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/lestonEth/shadspace/internal/core"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/lestonEth/shadspace/internal/farmer"
 	"fmt"
 	"log"
 	"encoding/gob"
@@ -24,6 +25,8 @@ type Coordinator struct {
 	replicator *ReplicationManager
 	cfg        Config
 	startTime  time.Time
+    metricsLock sync.RWMutex
+    nodeMetrics map[peer.ID]*farmer.NodeMetrics
 }
 
 func NewCoordinator(parentCtx context.Context, cfg Config) (*Coordinator, error) {
@@ -39,6 +42,7 @@ func NewCoordinator(parentCtx context.Context, cfg Config) (*Coordinator, error)
 		registry:   registry,
 		cfg:        cfg,
 		startTime:  time.Now(),
+        nodeMetrics: make(map[peer.ID]*farmer.NodeMetrics),
 	}
 
 	networkCfg := p2p.NetworkConfig{
@@ -75,8 +79,9 @@ func (c *Coordinator) Start() error {
 		return err
 	}
 	
-	c.wg.Add(1)
+	c.wg.Add(2)
 	go c.monitorPeers()
+	go c.collectNodeMetrics()
 	
 	return nil
 }
@@ -246,4 +251,56 @@ func (c *Coordinator) sendShardToNode(shard []byte, meta core.FileMetadata, node
 
     log.Printf("Shard %d successfully stored on %s", meta.ShardIndex, node.ID)
     return nil
+}
+
+func (c *Coordinator) collectNodeMetrics() {
+    for {
+        select {
+        case <-time.After(15 * time.Second):
+            peers := c.network.GetPeers()
+            var wg sync.WaitGroup
+
+            for _, p := range peers {
+                wg.Add(1)
+                go func(pid peer.ID) {
+                    defer wg.Done()
+                    metrics, err := c.getMetricsFromNode(pid)
+
+                    if err != nil {
+                        log.Printf("Failed to get metric from %s: %v", pid, err)
+                        return
+                    }
+
+                    c.metricsLock.Lock()
+                    c.nodeMetrics[pid] = metrics
+                    c.metricsLock.Unlock()
+                }(p.ID)
+            }
+
+            wg.Wait()
+
+        case <-c.ctx.Done():
+            return
+        }
+    }
+}
+
+func (c *Coordinator) getMetricsFromNode(pid peer.ID) (*farmer.NodeMetrics, error) {
+    ctx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+    defer cancel()
+
+    // Open stream to fetch metrics
+    stream, err := c.network.Host().NewStream(ctx, pid, "/shadspace/metrics/1.0.0")
+    if err != nil {
+        return nil, err
+    }
+    defer stream.Close()
+
+    dec := gob.NewDecoder(stream)
+    var metrics farmer.NodeMetrics
+    if err := dec.Decode(&metrics); err != nil {
+        return nil, err
+    }
+
+    return &metrics, nil
 }
