@@ -27,7 +27,7 @@ type FarmerNode struct {
 	cfg          Config
 	bootstrapPeers []peer.AddrInfo
 	lastReconnect time.Time
-    startTime: time.Time
+    startTime time.Time
 }
 
 
