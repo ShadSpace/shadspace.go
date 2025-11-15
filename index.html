@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      Advanced Document Template Editor | Professional Template Management
+    </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <!-- Quill.js CSS -->
+    <link
+      href="https://cdn.quilljs.com/1.3.6/quill.snow.css"
+      rel="stylesheet"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+      body {
+        font-family: "Inter", sans-serif;
+      }
+
+      .glass-effect {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .shadow-card {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+          0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      }
+
+      .border-light {
+        border: 1px solid #e5e7eb;
+      }
+
+      .active-tab {
+        position: relative;
+      }
+
+      .active-tab::after {
+        content: "";
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background-color: #5d5cde;
+      }
+
+      /* Quill Editor Custom Styles */
+      .ql-editor {
+        min-height: 400px;
+        font-family: "Inter", sans-serif;
+      }
+
+      .ql-toolbar {
+        border-top-left-radius: 0.5rem;
+        border-top-right-radius: 0.5rem;
+        border-bottom: none !important;
+      }
+
+      .ql-container {
+        border-bottom-left-radius: 0.5rem;
+        border-bottom-right-radius: 0.5rem;
+        font-size: 14px;
+      }
+
+      .ql-toolbar.ql-snow {
+        border: 1px solid #d1d5db;
+      }
+
+      .ql-container.ql-snow {
+        border: 1px solid #d1d5db;
+        border-top: none;
+      }
+
+      /* Field styling in Quill */
+      .template-field {
+        background-color: #e8e8ff;
+        color: #5d5cde;
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px dashed #5d5cde;
+        font-weight: 500;
+      }
+
+      /* Fill template field styling */
+      .fill-field {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin: 2px;
+        display: inline-block;
+        min-width: 120px;
+      }
+
+      .fill-field input,
+      .fill-field select,
+      .fill-field textarea {
+        background: transparent;
+        border: none;
+        outline: none;
+        width: 100%;
+        font-size: inherit;
+        font-family: inherit;
+      }
+
+      .fill-field:focus-within {
+        border-color: #5d5cde;
+        box-shadow: 0 0 0 2px rgba(93, 92, 222, 0.1);
+      }
+
+      .placeholder-element {
+        background-color: #f3f4f6;
+        border: 1px dashed #d1d5db;
+        padding: 1rem;
+        text-align: center;
+        margin: 0.5rem 0;
+        border-radius: 0.25rem;
+      }
+
+      /* Upload area styles */
+      .upload-area {
+        border: 2px dashed #d1d5db;
+        border-radius: 0.5rem;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+
+      .upload-area:hover {
+        border-color: #5d5cde;
+        background-color: #f8f9ff;
+      }
+
+      .upload-area.dragover {
+        border-color: #5d5cde;
+        background-color: #e8e8ff;
+      }
+
+      .file-input {
+        display: none;
+      }
+
+      /* Fill template preview styling */
+      .template-preview {
+        font-family: "Inter", sans-serif;
+        line-height: 1.6;
+      }
+
+      .template-preview h1 {
+        font-size: 2em;
+        margin: 0.67em 0;
+      }
+      .template-preview h2 {
+        font-size: 1.5em;
+        margin: 0.83em 0;
+      }
+      .template-preview h3 {
+        font-size: 1.17em;
+        margin: 1em 0;
+      }
+      .template-preview h4 {
+        font-size: 1em;
+        margin: 1.33em 0;
+      }
+      .template-preview h5 {
+        font-size: 0.83em;
+        margin: 1.67em 0;
+      }
+      .template-preview h6 {
+        font-size: 0.67em;
+        margin: 2.33em 0;
+      }
+
+      .template-preview p {
+        margin: 1em 0;
+      }
+      .template-preview ul,
+      .template-preview ol {
+        padding-left: 2em;
+      }
+      .template-preview table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1em 0;
+      }
+      .template-preview table,
+      .template-preview th,
+      .template-preview td {
+        border: 1px solid #d1d5db;
+        padding: 0.5em;
+      }
+    </style>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                50: "#f0f0ff",
+                100: "#e8e8ff",
+                500: "#5D5CDE",
+                600: "#4C4BC7",
+                700: "#3a3aad",
+              },
+              gray: {
+                50: "#f9fafb",
+                100: "#f3f4f6",
+                200: "#e5e7eb",
+                300: "#d1d5db",
+                400: "#9ca3af",
+                500: "#6b7280",
+                600: "#4b5563",
+                700: "#374151",
+                800: "#1f2937",
+                900: "#111827",
+              },
+            },
+            fontFamily: {
+              sans: ["Inter", "system-ui", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body class="bg-gray-50 text-gray-800 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 py-4">
+      <div class="container mx-auto px-6">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center space-x-3">
+            <div class="bg-primary-500 text-white p-2 rounded-lg">
+              <i class="fas fa-file-contract text-xl"></i>
+            </div>
+            <div>
+              <h1 class="text-xl font-bold text-gray-900">
+                Advanced Document Template Editor
+              </h1>
+              <p class="text-sm text-gray-500">
+                Professional document template management with DOCX support
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2 text-sm text-gray-500">
+              <i class="far fa-save"></i>
+              <span id="saveStatus">All changes saved</span>
+            </div>
+            <div class="h-6 border-r border-gray-300"></div>
+            <button class="text-gray-500 hover:text-gray-700">
+              <i class="fas fa-cog"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="container mx-auto px-6 py-8 max-w-7xl">
+      <!-- Navigation Tabs -->
+      <div class="mb-8">
+        <div class="flex space-x-8 border-b border-gray-200">
+          <button
+            id="createTab"
+            class="tab-btn active-tab px-1 py-3 text-sm font-medium text-primary-600 flex items-center"
+          >
+            <i class="fas fa-edit mr-2"></i>Create Template
+          </button>
+          <button
+            id="fillTab"
+            class="tab-btn px-1 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 flex items-center"
+          >
+            <i class="fas fa-file-alt mr-2"></i>Fill Template
+          </button>
+          <button
+            id="previewTab"
+            class="tab-btn px-1 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 flex items-center"
+          >
+            <i class="fas fa-eye mr-2"></i>Preview
+          </button>
+        </div>
+      </div>
+
+      <!-- Create Template Section -->
+      <div id="createSection" class="tab-content">
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          <!-- Template Editor -->
+          <div class="xl:col-span-3">
+            <div class="bg-white rounded-xl shadow-card border-light p-6">
+              <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-semibold text-gray-900">
+                  Template Editor
+                </h2>
+                <div class="flex space-x-2">
+                  <button
+                    onclick="showUploadModal()"
+                    class="px-3 py-1.5 text-xs bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                  >
+                    <i class="fas fa-upload mr-1"></i> Upload DOCX
+                  </button>
+                  <button
+                    onclick="resetEditor()"
+                    class="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    <i class="fas fa-redo mr-1"></i> Reset
+                  </button>
+                  <button
+                    onclick="saveTemplate()"
+                    class="px-3 py-1.5 text-xs bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                  >
+                    <i class="fas fa-save mr-1"></i> Save Template
+                  </button>
+                </div>
+              </div>
+
+              <!-- Template Title -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Template Title</label
+                >
+                <input
+                  type="text"
+                  id="templateTitle"
+                  placeholder="Enter template title"
+                  class="w-full px-4 py-3 text-base border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                />
+              </div>
+
+              <!-- Quill Editor Container -->
+              <div class="mb-6">
+                <div class="flex justify-between items-center mb-2">
+                  <label class="block text-sm font-medium text-gray-700"
+                    >Template Content</label
+                  >
+                  <span class="text-xs text-gray-500" id="charCount"
+                    >0 characters</span
+                  >
+                </div>
+                <div id="editor-container">
+                  <!-- Quill editor will be initialized here -->
+                </div>
+              </div>
+
+              <!-- Quick Actions -->
+              <div class="mb-4">
+                <h3 class="text-sm font-medium text-gray-700 mb-3">
+                  Quick Fields
+                </h3>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    onclick="insertField('name')"
+                    class="px-3 py-2 bg-primary-50 text-primary-600 rounded-lg text-sm hover:bg-primary-100 transition-colors border border-primary-100"
+                  >
+                    <i class="fas fa-user mr-1"></i> Name
+                  </button>
+                  <button
+                    onclick="insertField('date')"
+                    class="px-3 py-2 bg-primary-50 text-primary-600 rounded-lg text-sm hover:bg-primary-100 transition-colors border border-primary-100"
+                  >
+                    <i class="fas fa-calendar mr-1"></i> Date
+                  </button>
+                  <button
+                    onclick="insertField('company')"
+                    class="px-3 py-2 bg-primary-50 text-primary-600 rounded-lg text-sm hover:bg-primary-100 transition-colors border border-primary-100"
+                  >
+                    <i class="fas fa-building mr-1"></i> Company
+                  </button>
+                  <button
+                    onclick="insertField('address')"
+                    class="px-3 py-2 bg-primary-50 text-primary-600 rounded-lg text-sm hover:bg-primary-100 transition-colors border border-primary-100"
+                  >
+                    <i class="fas fa-map-marker-alt mr-1"></i> Address
+                  </button>
+                  <button
+                    onclick="insertField('email')"
+                    class="px-3 py-2 bg-primary-50 text-primary-600 rounded-lg text-sm hover:bg-primary-100 transition-colors border border-primary-100"
+                  >
+                    <i class="fas fa-envelope mr-1"></i> Email
+                  </button>
+                  <button
+                    onclick="insertField('phone')"
+                    class="px-3 py-2 bg-primary-50 text-primary-600 rounded-lg text-sm hover:bg-primary-100 transition-colors border border-primary-100"
+                  >
+                    <i class="fas fa-phone mr-1"></i> Phone
+                  </button>
+                  <button
+                    onclick="insertField('signature')"
+                    class="px-3 py-2 bg-primary-50 text-primary-600 rounded-lg text-sm hover:bg-primary-100 transition-colors border border-primary-100"
+                  >
+                    <i class="fas fa-signature mr-1"></i> Signature
+                  </button>
+                  <button
+                    onclick="insertField('amount')"
+                    class="px-3 py-2 bg-primary-50 text-primary-600 rounded-lg text-sm hover:bg-primary-100 transition-colors border border-primary-100"
+                  >
+                    <i class="fas fa-dollar-sign mr-1"></i> Amount
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sidebar -->
+          <div class="xl:col-span-1 space-y-6">
+            <!-- Fields Manager -->
+            <div class="bg-white rounded-xl shadow-card border-light p-5">
+              <h2 class="text-lg font-semibold text-gray-900 mb-4">
+                Custom Fields
+              </h2>
+
+              <!-- Add New Field -->
+              <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Add New Field</label
+                >
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    id="newFieldName"
+                    placeholder="Field name"
+                    class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                  />
+                  <button
+                    onclick="addCustomField()"
+                    class="px-3 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                  >
+                    <i class="fas fa-plus"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Detected Fields List -->
+              <div>
+                <h3 class="text-sm font-medium text-gray-700 mb-3">
+                  Detected Fields
+                </h3>
+                <div id="fieldsList" class="space-y-2 max-h-60 overflow-y-auto">
+                  <!-- Fields will be populated here -->
+                  <div class="text-center py-4 text-gray-500">
+                    <i class="fas fa-tags text-lg mb-2"></i>
+                    <p class="text-sm">No fields detected</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Template Styles -->
+            <div class="bg-white rounded-xl shadow-card border-light p-5">
+              <h2 class="text-lg font-semibold text-gray-900 mb-4">
+                Template Styles
+              </h2>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1"
+                    >Page Size</label
+                  >
+                  <select
+                    id="pageSize"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white"
+                  >
+                    <option value="a4">A4</option>
+                    <option value="letter">Letter</option>
+                    <option value="legal">Legal</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1"
+                    >Page Orientation</label
+                  >
+                  <select
+                    id="pageOrientation"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white"
+                  >
+                    <option value="portrait">Portrait</option>
+                    <option value="landscape">Landscape</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1"
+                    >Margins</label
+                  >
+                  <div class="grid grid-cols-2 gap-2">
+                    <input
+                      type="number"
+                      id="marginTop"
+                      placeholder="Top"
+                      value="1"
+                      class="px-2 py-1 text-sm border border-gray-300 rounded"
+                    />
+                    <input
+                      type="number"
+                      id="marginBottom"
+                      placeholder="Bottom"
+                      value="1"
+                      class="px-2 py-1 text-sm border border-gray-300 rounded"
+                    />
+                    <input
+                      type="number"
+                      id="marginLeft"
+                      placeholder="Left"
+                      value="1"
+                      class="px-2 py-1 text-sm border border-gray-300 rounded"
+                    />
+                    <input
+                      type="number"
+                      id="marginRight"
+                      placeholder="Right"
+                      value="1"
+                      class="px-2 py-1 text-sm border border-gray-300 rounded"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Saved Templates -->
+            <div class="bg-white rounded-xl shadow-card border-light p-5">
+              <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-gray-900">
+                  Saved Templates
+                </h2>
+                <span
+                  class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full"
+                  id="templateCount"
+                  >0</span
+                >
+              </div>
+              <div
+                id="savedTemplates"
+                class="space-y-3 max-h-80 overflow-y-auto"
+              >
+                <!-- Saved templates will appear here -->
+                <div class="text-center py-6 text-gray-500">
+                  <i class="fas fa-folder-open text-xl mb-2"></i>
+                  <p class="text-sm">No saved templates</p>
+                  <p class="text-xs mt-1">
+                    Create your first template to get started
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fill Template Section -->
+      <div id="fillSection" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <!-- Template Selection & Fields -->
+          <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-card border-light p-6">
+              <h2 class="text-lg font-semibold text-gray-900 mb-6">
+                Fill Template
+              </h2>
+
+              <!-- Template Selection -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Select Template</label
+                >
+                <select
+                  id="templateSelect"
+                  onchange="loadTemplateForFilling()"
+                  class="w-full px-4 py-3 text-base border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                >
+                  <option value="">Choose a template...</option>
+                </select>
+              </div>
+
+              <!-- Dynamic Fields -->
+              <div id="dynamicFields" class="space-y-5">
+                <!-- Fields will be generated here -->
+                <div class="text-center py-10 text-gray-500">
+                  <i class="fas fa-file-alt text-3xl mb-3"></i>
+                  <p class="text-sm">Select a template to start filling</p>
+                </div>
+              </div>
+
+              <button
+                onclick="generateDocument()"
+                class="w-full mt-6 bg-primary-500 text-white py-3 px-4 rounded-lg hover:bg-primary-600 transition-colors font-medium"
+              >
+                <i class="fas fa-file-pdf mr-2"></i>Generate PDF Document
+              </button>
+            </div>
+          </div>
+
+          <!-- Live Preview -->
+          <div class="lg:col-span-1">
+            <div
+              class="bg-white rounded-xl shadow-card border-light p-6 sticky top-6"
+            >
+              <h2 class="text-lg font-semibold text-gray-900 mb-4">
+                Live Preview
+              </h2>
+              <div
+                id="livePreview"
+                class="bg-gray-50 p-5 rounded-lg border min-h-96 text-sm text-gray-700 overflow-auto max-h-[500px] template-preview"
+              >
+                <div class="text-center py-10 text-gray-500">
+                  <i class="fas fa-eye text-xl mb-2"></i>
+                  <p class="text-sm">Select a template to see the preview</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview Section -->
+      <div id="previewSection" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-card border-light p-6">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-semibold text-gray-900">
+              Template Preview
+            </h2>
+            <button
+              onclick="printPreview()"
+              class="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <i class="fas fa-print mr-2"></i>Print
+            </button>
+          </div>
+          <div
+            id="templatePreview"
+            class="bg-gray-50 p-6 rounded-lg border min-h-96 text-gray-700 template-preview"
+          >
+            <div class="text-center py-10 text-gray-500">
+              <i class="fas fa-file-text text-xl mb-2"></i>
+              <p class="text-sm">No template content to preview</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Modal -->
+    <div
+      id="customModal"
+      class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4"
+    >
+      <div class="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full mx-auto">
+        <div id="modalContent">
+          <!-- Modal content will be inserted here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- DOCX Upload Modal -->
+    <div
+      id="uploadModal"
+      class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4"
+    >
+      <div class="bg-white p-6 rounded-xl shadow-lg max-w-md w-full mx-auto">
+        <h3 class="text-lg font-semibold mb-4">Upload DOCX File</h3>
+        <div class="mb-4">
+          <div
+            id="uploadArea"
+            class="upload-area"
+            onclick="document.getElementById('docxFile').click()"
+          >
+            <i class="fas fa-file-word text-4xl text-blue-500 mb-3"></i>
+            <p class="text-lg font-medium text-gray-700">
+              Click to upload DOCX file
+            </p>
+            <p class="text-sm text-gray-500 mt-1">
+              or drag and drop your file here
+            </p>
+            <p class="text-xs text-gray-400 mt-2">
+              Supported: .docx files only
+            </p>
+          </div>
+          <input
+            type="file"
+            id="docxFile"
+            accept=".docx"
+            class="file-input"
+            onchange="handleDocxUpload(this.files[0])"
+          />
+          <div id="uploadProgress" class="mt-4 hidden">
+            <div class="flex justify-between text-sm text-gray-600 mb-1">
+              <span>Processing...</span>
+              <span id="progressText">0%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              <div
+                id="progressBar"
+                class="bg-primary-500 h-2 rounded-full transition-all duration-300"
+                style="width: 0%"
+              ></div>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end space-x-3">
+          <button
+            onclick="hideUploadModal()"
+            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quill.js Script -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <!-- Mammoth.js for DOCX parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script>
+      // Application state
+      let templates = JSON.parse(
+        localStorage.getItem("documentTemplates") || "[]"
+      );
+      let currentTemplate = null;
+      let quill = null;
+
+      // Field type mappings for smart input types
+      const fieldTypes = {
+        date: "date",
+        email: "email",
+        phone: "tel",
+        amount: "number",
+        signature: "text",
+        name: "text",
+        company: "text",
+        address: "text",
+      };
+
+      // Initialize Quill editor
+      function initializeQuill() {
+        quill = new Quill("#editor-container", {
+          theme: "snow",
+          modules: {
+            toolbar: [
+              [{ header: [1, 2, 3, 4, 5, 6, false] }],
+              [{ font: [] }, { size: [] }],
+              ["bold", "italic", "underline", "strike"],
+              [{ color: [] }, { background: [] }],
+              [{ script: "sub" }, { script: "super" }],
+              [{ list: "ordered" }, { list: "bullet" }],
+              [{ indent: "-1" }, { indent: "+1" }],
+              [{ align: [] }],
+              ["blockquote", "code-block"],
+              ["link", "image", "video"],
+              ["clean"],
+            ],
+          },
+          placeholder:
+            "Start typing your template content here...\nUse {{fieldName}} for custom fields that will be filled later.\nOr upload a DOCX file to edit.",
+        });
+
+        // Update character count when content changes
+        quill.on("text-change", function () {
+          updateCharCount();
+          detectFields();
+
+          // Update save status
+          document.getElementById("saveStatus").textContent = "Unsaved changes";
+          document
+            .getElementById("saveStatus")
+            .classList.remove("text-green-500");
+          document
+            .getElementById("saveStatus")
+            .classList.add("text-orange-500");
+        });
+      }
+
+      // DOCX Upload Functions
+      function showUploadModal() {
+        document.getElementById("uploadModal").classList.remove("hidden");
+        document.getElementById("uploadModal").classList.add("flex");
+        setupDragAndDrop();
+      }
+
+      function hideUploadModal() {
+        document.getElementById("uploadModal").classList.add("hidden");
+        document.getElementById("uploadModal").classList.remove("flex");
+        resetUploadProgress();
+      }
+
+      function setupDragAndDrop() {
+        const uploadArea = document.getElementById("uploadArea");
+        const fileInput = document.getElementById("docxFile");
+
+        // Prevent default drag behaviors
+        ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+          uploadArea.addEventListener(eventName, preventDefaults, false);
+          document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        // Highlight drop area when item is dragged over it
+        ["dragenter", "dragover"].forEach((eventName) => {
+          uploadArea.addEventListener(eventName, highlight, false);
+        });
+
+        ["dragleave", "drop"].forEach((eventName) => {
+          uploadArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        // Handle dropped files
+        uploadArea.addEventListener("drop", handleDrop, false);
+
+        function preventDefaults(e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+
+        function highlight() {
+          uploadArea.classList.add("dragover");
+        }
+
+        function unhighlight() {
+          uploadArea.classList.remove("dragover");
+        }
+
+        function handleDrop(e) {
+          const dt = e.dataTransfer;
+          const files = dt.files;
+          if (files.length > 0) {
+            handleDocxUpload(files[0]);
+          }
+        }
+      }
+
+      function handleDocxUpload(file) {
+        if (!file) return;
+
+        // Validate file type
+        if (!file.name.endsWith(".docx")) {
+          showAlert("Please upload a .docx file only.", "error");
+          return;
+        }
+
+        // Show progress
+        const progressBar = document.getElementById("progressBar");
+        const progressText = document.getElementById("progressText");
+        const uploadProgress = document.getElementById("uploadProgress");
+
+        uploadProgress.classList.remove("hidden");
+
+        // Simulate progress (since Mammoth doesn't have progress events)
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+          progress += 5;
+          progressBar.style.width = `${progress}%`;
+          progressText.textContent = `${progress}%`;
+
+          if (progress >= 90) {
+            clearInterval(progressInterval);
+          }
+        }, 100);
+
+        // Read file as array buffer
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+          const arrayBuffer = e.target.result;
+
+          // Use Mammoth to convert DOCX to HTML
+          mammoth
+            .convertToHtml({ arrayBuffer: arrayBuffer })
+            .then(function (result) {
+              clearInterval(progressInterval);
+              progressBar.style.width = "100%";
+              progressText.textContent = "100%";
+
+              setTimeout(() => {
+                // Insert the converted HTML into Quill
+                const html = result.value;
+                const delta = quill.clipboard.convert(html);
+                quill.setContents(delta);
+
+                // Set filename as title if no title exists
+                const titleInput = document.getElementById("templateTitle");
+                if (!titleInput.value.trim()) {
+                  const fileName = file.name.replace(".docx", "");
+                  titleInput.value = fileName;
+                }
+
+                hideUploadModal();
+                showAlert(
+                  "DOCX file uploaded successfully! You can now edit the document.",
+                  "success"
+                );
+              }, 500);
+            })
+            .catch(function (error) {
+              clearInterval(progressInterval);
+              console.error("Error converting DOCX:", error);
+              showAlert(
+                "Error converting DOCX file. Please try again with a different file.",
+                "error"
+              );
+            });
+        };
+
+        reader.onerror = function () {
+          clearInterval(progressInterval);
+          showAlert("Error reading file. Please try again.", "error");
+        };
+
+        reader.readAsArrayBuffer(file);
+      }
+
+      function resetUploadProgress() {
+        const progressBar = document.getElementById("progressBar");
+        const progressText = document.getElementById("progressText");
+        const uploadProgress = document.getElementById("uploadProgress");
+
+        progressBar.style.width = "0%";
+        progressText.textContent = "0%";
+        uploadProgress.classList.add("hidden");
+        document.getElementById("docxFile").value = "";
+      }
+
+      // Tab management
+      function showTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll(".tab-content").forEach((content) => {
+          content.classList.add("hidden");
+        });
+
+        // Remove active class from all tabs
+        document.querySelectorAll(".tab-btn").forEach((btn) => {
+          btn.classList.remove("active-tab", "text-primary-600");
+          btn.classList.add("text-gray-500", "hover:text-gray-700");
+        });
+
+        // Show selected tab content
+        document.getElementById(tabName + "Section").classList.remove("hidden");
+
+        // Add active class to selected tab
+        const activeTab = document.getElementById(tabName + "Tab");
+        activeTab.classList.add("active-tab", "text-primary-600");
+        activeTab.classList.remove("text-gray-500", "hover:text-gray-700");
+
+        // Update content based on tab
+        if (tabName === "preview") {
+          updatePreview();
+        } else if (tabName === "fill") {
+          loadTemplateOptions();
+        }
+      }
+
+      // Event listeners for tabs
+      document
+        .getElementById("createTab")
+        .addEventListener("click", () => showTab("create"));
+      document
+        .getElementById("fillTab")
+        .addEventListener("click", () => showTab("fill"));
+      document
+        .getElementById("previewTab")
+        .addEventListener("click", () => showTab("preview"));
+
+      // Initialize with create tab active
+      showTab("create");
+
+      // Modal functions
+      function showModal(content) {
+        document.getElementById("modalContent").innerHTML = content;
+        document.getElementById("customModal").classList.remove("hidden");
+        document.getElementById("customModal").classList.add("flex");
+      }
+
+      function hideModal() {
+        document.getElementById("customModal").classList.add("hidden");
+        document.getElementById("customModal").classList.remove("flex");
+      }
+
+      function showAlert(message, type = "info") {
+        const icon =
+          type === "success"
+            ? "fa-check-circle"
+            : type === "error"
+            ? "fa-exclamation-circle"
+            : "fa-info-circle";
+        const color =
+          type === "success"
+            ? "text-green-500"
+            : type === "error"
+            ? "text-red-500"
+            : "text-blue-500";
+
+        showModal(`
+                <div class="text-center">
+                    <i class="fas ${icon} ${color} text-3xl mb-4"></i>
+                    <p class="text-gray-700 mb-6">${message}</p>
+                    <div class="flex justify-center">
+                        <button onclick="hideModal()" class="px-6 py-2 bg-primary-500 text-white hover:bg-primary-600 rounded-lg transition-colors">OK</button>
+                    </div>
+                </div>
+            `);
+      }
+
+      // Template functions
+      function insertField(fieldName) {
+        const fieldPlaceholder = `{{${fieldName}}}`;
+        const range = quill.getSelection();
+        quill.insertText(range ? range.index : 0, fieldPlaceholder);
+
+        // Apply styling to the field
+        quill.formatText(range ? range.index : 0, fieldPlaceholder.length, {
+          background: "#e8e8ff",
+          color: "#5D5CDE",
+          bold: true,
+        });
+      }
+
+      function addCustomField() {
+        const fieldName = document.getElementById("newFieldName").value.trim();
+        if (!fieldName) {
+          showAlert("Please enter a field name", "error");
+          return;
+        }
+
+        // Validate field name (alphanumeric and underscores only)
+        if (!/^[a-zA-Z0-9_]+$/.test(fieldName)) {
+          showAlert(
+            "Field name can only contain letters, numbers, and underscores",
+            "error"
+          );
+          return;
+        }
+
+        insertField(fieldName);
+        document.getElementById("newFieldName").value = "";
+      }
+
+      function detectFields() {
+        const content = quill.root.innerHTML;
+        const fieldRegex = /\{\{([^}]+)\}\}/g;
+        const fields = new Set();
+        let match;
+
+        while ((match = fieldRegex.exec(content)) !== null) {
+          fields.add(match[1].trim());
+        }
+
+        const fieldsList = document.getElementById("fieldsList");
+        fieldsList.innerHTML = "";
+
+        if (fields.size === 0) {
+          fieldsList.innerHTML = `
+                    <div class="text-center py-4 text-gray-500">
+                        <i class="fas fa-tags text-lg mb-2"></i>
+                        <p class="text-sm">No fields detected</p>
+                    </div>
+                `;
+          return;
+        }
+
+        fields.forEach((field) => {
+          const fieldDiv = document.createElement("div");
+          fieldDiv.className =
+            "flex items-center justify-between bg-gray-50 p-3 rounded-lg border";
+          fieldDiv.innerHTML = `
+                    <div class="flex items-center">
+                        <span class="bg-primary-100 text-primary-700 text-xs px-2 py-1 rounded mr-2">field</span>
+                        <span class="text-sm font-medium">{{${field}}}</span>
+                    </div>
+                    <button onclick="removeField('${field}')" class="text-gray-400 hover:text-red-500 transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+          fieldsList.appendChild(fieldDiv);
+        });
+      }
+
+      function removeField(fieldName) {
+        const content = quill.getText();
+        const fieldPlaceholder = `{{${fieldName}}}`;
+        let index = content.indexOf(fieldPlaceholder);
+
+        while (index !== -1) {
+          quill.deleteText(index, fieldPlaceholder.length);
+          index = content.indexOf(fieldPlaceholder, index);
+        }
+      }
+
+      function updateCharCount() {
+        const content = quill.getText();
+        document.getElementById(
+          "charCount"
+        ).textContent = `${content.length} characters`;
+      }
+
+      function resetEditor() {
+        if (
+          confirm(
+            "Are you sure you want to reset the editor? All unsaved changes will be lost."
+          )
+        ) {
+          document.getElementById("templateTitle").value = "";
+          quill.setText(
+            "Start typing your template content here...\n\nUse {{fieldName}} for custom fields that will be filled later.\nOr upload a DOCX file to edit."
+          );
+          detectFields();
+          updateCharCount();
+
+          // Update save status
+          document.getElementById("saveStatus").textContent =
+            "All changes saved";
+          document
+            .getElementById("saveStatus")
+            .classList.remove("text-orange-500");
+          document.getElementById("saveStatus").classList.add("text-green-500");
+        }
+      }
+
+      function saveTemplate() {
+        const title = document.getElementById("templateTitle").value.trim();
+        const content = quill.root.innerHTML;
+
+        if (!title) {
+          showAlert("Please enter a template title", "error");
+          return;
+        }
+
+        if (!content || quill.getText().trim().length === 0) {
+          showAlert("Please enter template content", "error");
+          return;
+        }
+
+        const template = {
+          id: Date.now(),
+          title: title,
+          content: content,
+          createdAt: new Date().toISOString(),
+          styles: {
+            pageSize: document.getElementById("pageSize").value,
+            pageOrientation: document.getElementById("pageOrientation").value,
+            margins: {
+              top: document.getElementById("marginTop").value,
+              bottom: document.getElementById("marginBottom").value,
+              left: document.getElementById("marginLeft").value,
+              right: document.getElementById("marginRight").value,
+            },
+          },
+        };
+
+        templates.push(template);
+        localStorage.setItem("documentTemplates", JSON.stringify(templates));
+
+        showAlert("Template saved successfully!", "success");
+        loadSavedTemplates();
+        loadTemplateOptions();
+
+        // Update save status
+        document.getElementById("saveStatus").textContent = "All changes saved";
+        document
+          .getElementById("saveStatus")
+          .classList.remove("text-orange-500");
+        document.getElementById("saveStatus").classList.add("text-green-500");
+      }
+
+      function loadSavedTemplates() {
+        const container = document.getElementById("savedTemplates");
+        container.innerHTML = "";
+
+        // Update template count
+        document.getElementById("templateCount").textContent = templates.length;
+
+        if (templates.length === 0) {
+          container.innerHTML = `
+                    <div class="text-center py-6 text-gray-500">
+                        <i class="fas fa-folder-open text-xl mb-2"></i>
+                        <p class="text-sm">No saved templates</p>
+                        <p class="text-xs mt-1">Create your first template to get started</p>
+                    </div>
+                `;
+          return;
+        }
+
+        templates.forEach((template) => {
+          const templateDiv = document.createElement("div");
+          templateDiv.className =
+            "bg-gray-50 p-4 rounded-lg border hover:border-primary-300 transition-colors cursor-pointer";
+          templateDiv.innerHTML = `
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="font-medium text-sm text-gray-900">${
+                              template.title
+                            }</h4>
+                            <p class="text-xs text-gray-500 mt-1">Created ${new Date(
+                              template.createdAt
+                            ).toLocaleDateString()}</p>
+                            <div class="mt-2 flex space-x-1">
+                                <span class="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">${
+                                  template.content.length
+                                } chars</span>
+                            </div>
+                        </div>
+                        <div class="flex space-x-1 ml-2">
+                            <button onclick="event.stopPropagation(); loadTemplate(${
+                              template.id
+                            })" class="p-1.5 text-gray-400 hover:text-primary-600 transition-colors" title="Edit template">
+                                <i class="fas fa-edit text-sm"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); deleteTemplate(${
+                              template.id
+                            })" class="p-1.5 text-gray-400 hover:text-red-500 transition-colors" title="Delete template">
+                                <i class="fas fa-trash text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+          templateDiv.addEventListener("click", () =>
+            loadTemplate(template.id)
+          );
+          container.appendChild(templateDiv);
+        });
+      }
+
+      function loadTemplate(templateId) {
+        const template = templates.find((t) => t.id === templateId);
+        if (template) {
+          document.getElementById("templateTitle").value = template.title;
+          quill.root.innerHTML = template.content;
+
+          // Load template styles if they exist
+          if (template.styles) {
+            document.getElementById("pageSize").value =
+              template.styles.pageSize || "a4";
+            document.getElementById("pageOrientation").value =
+              template.styles.pageOrientation || "portrait";
+
+            if (template.styles.margins) {
+              document.getElementById("marginTop").value =
+                template.styles.margins.top || "1";
+              document.getElementById("marginBottom").value =
+                template.styles.margins.bottom || "1";
+              document.getElementById("marginLeft").value =
+                template.styles.margins.left || "1";
+              document.getElementById("marginRight").value =
+                template.styles.margins.right || "1";
+            }
+          }
+
+          detectFields();
+          updateCharCount();
+          showTab("create");
+
+          // Update save status
+          document.getElementById("saveStatus").textContent =
+            "Editing existing template";
+          document
+            .getElementById("saveStatus")
+            .classList.remove("text-green-500");
+          document
+            .getElementById("saveStatus")
+            .classList.add("text-orange-500");
+        }
+      }
+
+      function deleteTemplate(templateId) {
+        showModal(`
+                <div class="text-center">
+                    <i class="fas fa-exclamation-triangle text-yellow-500 text-3xl mb-4"></i>
+                    <h3 class="font-medium text-gray-900 mb-2">Delete Template</h3>
+                    <p class="text-gray-700 mb-6">Are you sure you want to delete this template? This action cannot be undone.</p>
+                    <div class="flex justify-center space-x-3">
+                        <button onclick="hideModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
+                        <button onclick="confirmDeleteTemplate(${templateId})" class="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg transition-colors">Delete</button>
+                    </div>
+                </div>
+            `);
+      }
+
+      function confirmDeleteTemplate(templateId) {
+        templates = templates.filter((t) => t.id !== templateId);
+        localStorage.setItem("documentTemplates", JSON.stringify(templates));
+        loadSavedTemplates();
+        loadTemplateOptions();
+        hideModal();
+        showAlert("Template deleted successfully", "success");
+      }
+
+      function loadTemplateOptions() {
+        const select = document.getElementById("templateSelect");
+        select.innerHTML = '<option value="">Choose a template...</option>';
+
+        templates.forEach((template) => {
+          const option = document.createElement("option");
+          option.value = template.id;
+          option.textContent = template.title;
+          select.appendChild(option);
+        });
+      }
+
+      function loadTemplateForFilling() {
+        const templateId = document.getElementById("templateSelect").value;
+        if (!templateId) {
+          document.getElementById("dynamicFields").innerHTML = `
+                    <div class="text-center py-10 text-gray-500">
+                        <i class="fas fa-file-alt text-3xl mb-3"></i>
+                        <p class="text-sm">Select a template to start filling</p>
+                    </div>
+                `;
+          document.getElementById("livePreview").innerHTML = `
+                    <div class="text-center py-10 text-gray-500">
+                        <i class="fas fa-eye text-xl mb-2"></i>
+                        <p class="text-sm">Select a template to see the preview</p>
+                    </div>
+                `;
+          return;
+        }
+
+        currentTemplate = templates.find((t) => t.id == templateId);
+        if (!currentTemplate) return;
+
+        // Extract fields from template
+        const fieldRegex = /\{\{([^}]+)\}\}/g;
+        const fields = new Set();
+        let match;
+
+        while ((match = fieldRegex.exec(currentTemplate.content)) !== null) {
+          fields.add(match[1].trim());
+        }
+
+        // Generate input fields in sidebar
+        const fieldsContainer = document.getElementById("dynamicFields");
+        fieldsContainer.innerHTML = "";
+
+        if (fields.size === 0) {
+          fieldsContainer.innerHTML = `
+                    <div class="text-center py-6 text-gray-500">
+                        <i class="fas fa-check-circle text-green-500 text-xl mb-2"></i>
+                        <p class="text-sm">No fields to fill in this template</p>
+                    </div>
+                `;
+        } else {
+          fields.forEach((field) => {
+            const fieldType = getFieldType(field);
+            const fieldDiv = document.createElement("div");
+            fieldDiv.className = "bg-gray-50 p-4 rounded-lg border";
+
+            let inputField = "";
+            if (fieldType === "date") {
+              inputField = `<input type="date" id="field_${field}" oninput="updateLivePreview()" class="w-full px-3 py-2 text-base border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors">`;
+            } else if (fieldType === "email") {
+              inputField = `<input type="email" id="field_${field}" oninput="updateLivePreview()" class="w-full px-3 py-2 text-base border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors" placeholder="Enter ${field}">`;
+            } else if (fieldType === "tel") {
+              inputField = `<input type="tel" id="field_${field}" oninput="updateLivePreview()" class="w-full px-3 py-2 text-base border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors" placeholder="Enter ${field}">`;
+            } else if (fieldType === "number") {
+              inputField = `<input type="number" id="field_${field}" oninput="updateLivePreview()" class="w-full px-3 py-2 text-base border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors" placeholder="Enter ${field}">`;
+            } else {
+              inputField = `<input type="text" id="field_${field}" oninput="updateLivePreview()" class="w-full px-3 py-2 text-base border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors" placeholder="Enter ${field}">`;
+            }
+
+            fieldDiv.innerHTML = `
+                        <label class="block text-sm font-medium text-gray-700 mb-2">${field}</label>
+                        ${inputField}
+                    `;
+            fieldsContainer.appendChild(fieldDiv);
+          });
+        }
+
+        updateLivePreview();
+      }
+
+      function getFieldType(fieldName) {
+        const lowerField = fieldName.toLowerCase();
+        for (const [key, type] of Object.entries(fieldTypes)) {
+          if (lowerField.includes(key)) {
+            return type;
+          }
+        }
+        return "text";
+      }
+
+      function updateLivePreview() {
+        if (!currentTemplate) return;
+
+        let preview = currentTemplate.content;
+        const fieldRegex = /\{\{([^}]+)\}\}/g;
+
+        // Replace fields with styled input elements
+        preview = preview.replace(fieldRegex, (match, fieldName) => {
+          const input = document.getElementById(`field_${fieldName.trim()}`);
+          const value = input ? input.value : "";
+          const fieldType = getFieldType(fieldName);
+
+          let inputElement = "";
+          if (fieldType === "date") {
+            inputElement = `<span class="fill-field"><input type="date" value="${value}" oninput="updateFieldValue('${fieldName}', this.value)" style="min-width: 120px;"></span>`;
+          } else if (fieldType === "email") {
+            inputElement = `<span class="fill-field"><input type="email" value="${value}" oninput="updateFieldValue('${fieldName}', this.value)" placeholder="${fieldName}"></span>`;
+          } else if (fieldType === "tel") {
+            inputElement = `<span class="fill-field"><input type="tel" value="${value}" oninput="updateFieldValue('${fieldName}', this.value)" placeholder="${fieldName}"></span>`;
+          } else if (fieldType === "number") {
+            inputElement = `<span class="fill-field"><input type="number" value="${value}" oninput="updateFieldValue('${fieldName}', this.value)" placeholder="${fieldName}"></span>`;
+          } else {
+            inputElement = `<span class="fill-field"><input type="text" value="${value}" oninput="updateFieldValue('${fieldName}', this.value)" placeholder="${fieldName}"></span>`;
+          }
+
+          return inputElement;
+        });
+
+        document.getElementById("livePreview").innerHTML = preview;
+      }
+
+      function updateFieldValue(fieldName, value) {
+        // Update the sidebar input field
+        const sidebarInput = document.getElementById(`field_${fieldName}`);
+        if (sidebarInput) {
+          sidebarInput.value = value;
+        }
+        updateLivePreview();
+      }
+
+      function updatePreview() {
+        const content = quill.root.innerHTML;
+        if (!content || quill.getText().trim().length === 0) {
+          document.getElementById("templatePreview").innerHTML = `
+                    <div class="text-center py-10 text-gray-500">
+                        <i class="fas fa-file-text text-xl mb-2"></i>
+                        <p class="text-sm">No template content to preview</p>
+                    </div>
+                `;
+          return;
+        }
+
+        document.getElementById("templatePreview").innerHTML = content;
+      }
+
+      function printPreview() {
+        const content = document.getElementById("templatePreview").innerHTML;
+        if (!content || content.includes("No template content to preview")) {
+          showAlert("No content available to print", "error");
+          return;
+        }
+
+        const printWindow = window.open("", "_blank");
+        printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Template Preview</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; }
+                            .template-field { background-color: #e8e8ff; color: #5D5CDE; padding: 2px 6px; border-radius: 4px; border: 1px dashed #5D5CDE; font-weight: 500; }
+                        </style>
+                    </head>
+                    <body>
+                        <div>${content}</div>
+                    </body>
+                </html>
+            `);
+        printWindow.document.close();
+        printWindow.print();
+      }
+
+      function generateDocument() {
+        if (!currentTemplate) {
+          showAlert("Please select a template first", "error");
+          return;
+        }
+
+        let content = currentTemplate.content;
+        const fieldRegex = /\{\{([^}]+)\}\}/g;
+
+        // Check if all fields are filled
+        let allFieldsFilled = true;
+        const emptyFields = [];
+
+        content = content.replace(fieldRegex, (match, fieldName) => {
+          const input = document.getElementById(`field_${fieldName.trim()}`);
+          const value = input ? input.value : "";
+
+          if (!value) {
+            allFieldsFilled = false;
+            emptyFields.push(fieldName);
+            return `[${fieldName}]`;
+          }
+
+          return value;
+        });
+
+        if (!allFieldsFilled) {
+          showAlert(
+            `Please fill all fields. Missing: ${emptyFields.join(", ")}`,
+            "error"
+          );
+          return;
+        }
+
+        // Generate PDF
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // Set font and split text into lines
+        doc.setFont("helvetica");
+        doc.setFontSize(12);
+
+        // Extract text content from HTML for PDF
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = content;
+        const textContent = tempDiv.textContent || tempDiv.innerText || "";
+
+        const lines = doc.splitTextToSize(textContent, 170);
+        let y = 20;
+
+        // Add title
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
+        doc.text(currentTemplate.title, 105, 15, { align: "center" });
+
+        // Reset font for content
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+
+        lines.forEach((line) => {
+          if (y > 280) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(line, 20, y);
+          y += 7;
+        });
+
+        // Save the PDF
+        const fileName = `${currentTemplate.title.replace(/\s+/g, "_")}_${
+          new Date().toISOString().split("T")[0]
+        }.pdf`;
+        doc.save(fileName);
+
+        showAlert("PDF document generated successfully!", "success");
+      }
+
+      // Initialize
+      document.addEventListener("DOMContentLoaded", function () {
+        initializeQuill();
+        loadSavedTemplates();
+        loadTemplateOptions();
+        updateCharCount();
+      });
+    </script>
+  </body>
+</html>

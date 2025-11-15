@@ -1,7 +1,7 @@
 network:
   listenAddr: "/ip4/0.0.0.0/tcp/53799"
   bootstrapPeers:
-    - "/ip4/127.0.0.1/tcp/53798/p2p/QmNXsYmqJuVrNTu5HBP884FxHyCHJ4kVUWVJj7Td5eZHx9"
+    - "/ip4/127.0.0.1/tcp/53798/p2p/QmdYXofWkFASHDZHe7ZDEPtVppPsxcC1Lj3VgEgwmU3dbU"
   protocolTimeout: "30s"
 
 storage:

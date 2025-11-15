@@ -36,6 +36,7 @@ func (c *Coordinator) ServeAPI(addr string) error {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	router.GET("/", c.handleRoot)
 	router.GET("/status", c.handleStatus)
 	router.GET("/files/:hash", c.handleGetFile)
 	router.POST("/files", c.handleUploadFile)
@@ -52,6 +53,68 @@ func (c *Coordinator) ServeAPI(addr string) error {
 
 	return router.Run(addr)
 }
+
+func (c *Coordinator) handleRoot(ctx *gin.Context) {
+	html := `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ShadSpace - Distributed Storage</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .endpoints { 
+            margin-top: 20px; 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 5px;
+        }
+        .endpoint { 
+            margin: 5px 0; 
+            font-family: monospace; 
+            color: #0066cc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 ShadSpace Distributed Storage</h1>
+        <p>Welcome to ShadSpace - A distributed, fault-tolerant storage system.</p>
+        
+        <div class="endpoints">
+            <strong>Available Endpoints:</strong>
+            <div class="endpoint">GET /status - System status</div>
+            <div class="endpoint">GET /dashboard - Monitoring dashboard</div>
+            <div class="endpoint">POST /files - Upload files</div>
+            <div class="endpoint">GET /files/:hash - Get file info</div>
+            <div class="endpoint">GET /reconstruct/:hash - Reconstruct file</div>
+        </div>
+        
+        <p style="margin-top: 20px;">
+            <a href="/dashboard" style="color: #0066cc; text-decoration: none; font-weight: bold;">
+                → Go to Dashboard
+            </a>
+        </p>
+    </div>
+</body>
+</html>
+`
+	ctx.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+}
+
+
 
 func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
