@@ -1,8 +1,7 @@
 network:
   listenAddr: "/ip4/0.0.0.0/tcp/53798"
   privateKey: "CAMSeTB3AgEBBCBTUISUaHBmdWJoih/VYXyt60jzjYBWhYWzjn+Ed60+LKAKBggqhkjOPQMBB6FEA0IABP1HQJFyVtPVfxZUhAMxzJ+cnkhBDPR2TGgbQvDEaNHOAT3RrrZCofKVB2/mMBhMhppfntFPcaDsk40gDTt22jM="
-  bootstrapPeers:
-    - "/ip4/62.169.27.162/tcp/53798/p2p/QmPYFpu244gufyvRmTbKiHhFD46QM5MuYPoFekfipKN3b6"
+  bootstrapPeers: []
   protocolTimeout: "60s"
 
 storage:
