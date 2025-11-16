@@ -1,23 +1,24 @@
 network:
   listenAddr: "/ip4/0.0.0.0/tcp/53798"
   privateKey: "CAMSeTB3AgEBBCBTUISUaHBmdWJoih/VYXyt60jzjYBWhYWzjn+Ed60+LKAKBggqhkjOPQMBB6FEA0IABP1HQJFyVtPVfxZUhAMxzJ+cnkhBDPR2TGgbQvDEaNHOAT3RrrZCofKVB2/mMBhMhppfntFPcaDsk40gDTt22jM="
-  bootstrapPeers: []  # Changed from bootstrap_peers
-  protocolTimeout: "30s"  # Changed from protocol_timeout
+  bootstrapPeers:
+    - "/ip4/62.169.27.162/tcp/53798/p2p/QmPYFpu244gufyvRmTbKiHhFD46QM5MuYPoFekfipKN3b6"
+  protocolTimeout: "60s"
 
 storage:
-  replicationFactor: 3  # Changed from replication_factor
-  shardingEnabled: true  # Changed from sharding_enabled
-  proofTTL: "720h"  # Changed from proof_ttl
+  replicationFactor: 3
+  shardingEnabled: true
+  proofTTL: "720h"
 
 replication:
   strategy: "simple"
-  minReplicas: 1  # Changed from min_replicas
-  healthCheckInterval: "60s"  # Changed from health_check_interval
+  minReplicas: 2
+  healthCheckInterval: "30s"
 
 verification:
-  batchSize: 100  # Changed from batch_size
-  timeout: "10s"
-  maxVerifiers: 10  # Changed from max_verifiers
+  batchSize: 100
+  timeout: "30s"
+  maxVerifiers: 5
 
 api:
-  listenAddr: ":5555"
+  listenAddr: "0.0.0.0:5555" # Important: Bind to all interfaces

@@ -32,16 +32,47 @@ func main() {
 		log.Fatalf("Failed to start master node: %v", err)
 	}
 
-	// Start admin API
+	// Start admin API with error handling
 	log.Printf("Starting API server on %s", cfg.API.ListenAddr)
 
-	go masterNode.ServeAPI(cfg.API.ListenAddr)
+	// Start API server in a goroutine but capture errors
+	apiErr := make(chan error, 1)
+	go func() {
+		log.Printf("🌍 API server starting on: %s", cfg.API.ListenAddr)
+		if err := masterNode.ServeAPI(cfg.API.ListenAddr); err != nil {
+			log.Printf("❌ API server failed: %v", err)
+			apiErr <- err
+		}
+	}()
+
+	// Give the API server a moment to start and check for immediate errors
+	select {
+	case err := <-apiErr:
+		log.Fatalf("API server failed to start: %v", err)
+	case <-time.After(2 * time.Second):
+		log.Printf("✅ API server started successfully on %s", cfg.API.ListenAddr)
+		log.Printf("🔗 Test with: curl http://localhost%s/health", cfg.API.ListenAddr)
+	}
+
+	// Test the API server immediately
+	go func() {
+		time.Sleep(3 * time.Second)
+		log.Printf("🏁 Master node fully operational")
+		log.Printf("📊 Dashboard: http://localhost%s/dashboard", cfg.API.ListenAddr)
+		log.Printf("❤️  Health: http://localhost%s/health", cfg.API.ListenAddr)
+	}()
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	<-sigCh
+	
+	select {
+	case <-sigCh:
+		log.Println("Shutting down master node...")
+	case err := <-apiErr:
+		log.Printf("API server error: %v", err)
+	}
 
-	log.Println("Shutting down master node...")
 	masterNode.Stop()
 	time.Sleep(1 * time.Second)
+	log.Println("Master node shutdown complete")
 }
