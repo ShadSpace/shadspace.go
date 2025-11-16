@@ -71,10 +71,18 @@ func NewFarmerNode(parentCtx context.Context, cfg Config) (*FarmerNode, error) {
     verifier := NewProofVerifier()
     node.verifier = verifier
 
-    // Create network config with node's handlers
+	log.Printf("DEBUG - Passing to network manager: EnableNAT=%v, EnableRelay=%v, PublicIP=%s", 
+        cfg.Network.EnableNAT, cfg.Network.EnableRelay, cfg.Network.PublicIP)
+    log.Printf("DEBUG - AnnounceAddrs: %v", cfg.Network.AnnounceAddrs)
+
+    // Create network config with ALL settings including NAT
     networkCfg := p2p.NetworkConfig{
         ListenAddr:     cfg.Network.ListenAddr,
         BootstrapPeers: cfg.Network.BootstrapPeers,
+        EnableNAT:      cfg.Network.EnableNAT,      // ADD THIS
+        EnableRelay:    cfg.Network.EnableRelay,    // ADD THIS
+        PublicIP:       cfg.Network.PublicIP,       // ADD THIS
+        AnnounceAddrs:  cfg.Network.AnnounceAddrs,  // ADD THIS
         Protocols: []p2p.ProtocolHandler{
             {
                 ProtocolID: "/shadspace/storage/1.0.0",

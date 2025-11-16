@@ -7,25 +7,38 @@ import (
 )
 
 type Config struct {
-	Network NetworkConfig
-	Storage StorageConfig
-	API     APIConfig
+	Network  NetworkConfig
+	Storage  StorageConfig
+	Master   MasterConfig
+	Logging  LoggingConfig
 }
 
 type NetworkConfig struct {
 	ListenAddr     string
 	BootstrapPeers []string
 	ProtocolTimeout time.Duration
+	EnableNAT      bool
+	EnableRelay    bool
+	PublicIP       string
+	AnnounceAddrs  []string
 }
 
 type StorageConfig struct {
 	DataDir         string
 	MaxCapacityGB   int
 	ReservedSpaceGB int
+	CleanupInterval time.Duration
 }
 
-type APIConfig struct {
-	ListenAddr string
+type MasterConfig struct {
+	APIUrl             string
+	ReportInterval     time.Duration
+	HealthCheckInterval time.Duration
+}
+
+type LoggingConfig struct {
+	Level  string
+	Format string
 }
 
 func LoadConfig(path string) (Config, error) {

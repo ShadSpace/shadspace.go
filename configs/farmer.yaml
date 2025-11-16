@@ -1,13 +1,26 @@
+# farmer.yaml - WITH NAT SUPPORT
 network:
   listenAddr: "/ip4/0.0.0.0/tcp/53799"
+  privateKey: ""
   bootstrapPeers:
-    - "/ip4/127.0.0.1/tcp/53798/p2p/QmdYXofWkFASHDZHe7ZDEPtVppPsxcC1Lj3VgEgwmU3dbU"
-  protocolTimeout: "30s"
+    - "/ip4/62.169.27.162/tcp/53798/p2p/QmPnwCwTV3g9vJ1AnbmkSLsr4LXKBZH3jj3GHCtFnpmbaF"
+  enableNAT: true
+  enableRelay: true
+  publicIP: "102.212.29.75"
+  announceAddrs:
+    - "/ip4/102.212.29.75/tcp/53799"
+  protocolTimeout: "120s"
 
 storage:
-  dataDir: "./data"
+  dataDir: "./farmer-data"
   maxCapacityGB: 20
-  reservedSpaceGB: 10
+  reservedSpaceGB: 1
+  cleanupInterval: "1h"
 
-api:
-  listenAddr: ":5556"
+master:
+  apiUrl: "https://shadspace.crefy.xyz"
+  reportInterval: "30s"
+  healthCheckInterval: "15s"
+
+logging:
+  level: "debug"

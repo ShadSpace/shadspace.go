@@ -35,7 +35,16 @@ func NewStorageManager(cfg StorageConfig) (*StorageManager, error) {
 	// Calculate effective capacity (minimum of configured and actual available space)
 	configuredCapacity := uint64(cfg.MaxCapacityGB) << 30
 	reservedSpace := uint64(cfg.ReservedSpaceGB) << 30
-	effectiveCapacity := min(configuredCapacity, diskFree - reservedSpace)
+	availableForUse := diskFree - reservedSpace
+
+	log.Printf("DEBUG: DiskFree: %.2fGB, Reserved: %.2fGB, AvailableForUse: %.2fGB, Configured: %.2fGB",
+		float64(diskFree)/(1<<30),
+		float64(reservedSpace)/(1<<30),
+		float64(availableForUse)/(1<<30),
+		float64(configuredCapacity)/(1<<30))
+
+
+	effectiveCapacity := min(configuredCapacity, availableForUse)
 
 	if effectiveCapacity <= 0 {
 		return nil, fmt.Errorf("insufficient disk space (available: %.2fGB, reserved: %.2fGB)", 
